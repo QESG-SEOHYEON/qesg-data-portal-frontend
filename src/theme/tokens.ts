@@ -34,6 +34,8 @@ export const layout = {
   searchBarHeight: 46,
   dropdownMaxHeight: 340,
   rowHeight: 40,
+  contentMaxWidth: 1320, // 섹션 콘텐츠 최대 폭 (좌우 여백 축소)
+  wideMaxWidth: 1720, // 와이드(본문+레일) 컨테이너 최대 폭
 };
 
 // AntD ConfigProvider 테마
