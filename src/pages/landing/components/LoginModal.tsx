@@ -37,7 +37,7 @@ export function LoginModal({ open, onClose }: Props) {
       footer={null}
       closable={false}
       centered
-      width={680}
+      width={860}
       styles={{ content: { padding: 0, overflow: "hidden", borderRadius: 16 } }}
     >
       <div style={{ display: "flex", minHeight: 380 }}>
@@ -119,8 +119,17 @@ export function LoginModal({ open, onClose }: Props) {
             }}
           />
 
-          <h3 style={{ margin: "0 0 18px", fontSize: 17, fontWeight: 800, color: colors.textBase }}>
-            가입 후 다음 정보를 확인해보세요.
+          <h3
+            style={{
+              margin: "0 0 18px",
+              fontSize: 16,
+              fontWeight: 800,
+              color: colors.textBase,
+              whiteSpace: "nowrap", // 한 줄 고정 (모달 폭 확대로 수용)
+              lineHeight: 1.4,
+            }}
+          >
+            로그인하면 다음 서비스를 이용할 수 있어요.
           </h3>
 
           {/* 혜택 (위로) */}

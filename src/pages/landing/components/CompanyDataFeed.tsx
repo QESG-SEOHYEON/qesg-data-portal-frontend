@@ -10,7 +10,7 @@ import { BULK_COMPANIES, BULK_YEARS, BULK_LATEST_YEAR, getBulkCell } from "@/moc
 import { CATALOG_RAW } from "@/mock/catalogData";
 import type { CatalogRaw } from "@/mock/catalogData";
 import { tierOf, canAccess } from "@/mock/access";
-import { colors, categoryColors } from "@/theme/tokens";
+import { colors } from "@/theme/tokens";
 import { sourceBadgeColors } from "@/mock/sources";
 import { Section } from "./Section";
 
@@ -68,7 +68,7 @@ export function CompanyDataFeed() {
 
   const pool = useMemo(() => shuffled(BULK_COMPANIES).slice(0, PAGE_SIZE * PAGES), []);
   const rows = pool.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
-  const cols = TAB_COLS[tab];
+  const cols = TAB_COLS[tab]; // 전 컬럼 노출 — 좁으면 가로 스크롤로 자연스럽게 밀림
 
   return (
     <Section
@@ -99,7 +99,7 @@ export function CompanyDataFeed() {
             flexWrap: "wrap",
           }}
         >
-          <div style={{ display: "flex", gap: 18 }}>
+          <div style={{ display: "flex", gap: 22 }}>
             {TABS.map((t) => {
               const active = tab === t.key;
               return (
@@ -109,8 +109,8 @@ export function CompanyDataFeed() {
                   style={{
                     border: "none",
                     background: "transparent",
-                    padding: "14px 0",
-                    fontSize: 14,
+                    padding: "16px 2px",
+                    fontSize: 15,
                     fontWeight: active ? 700 : 500,
                     color: active ? colors.textBase : colors.textSub,
                     borderBottom: active ? `2px solid ${colors.accent}` : "2px solid transparent",
@@ -133,133 +133,173 @@ export function CompanyDataFeed() {
           </div>
         </div>
 
-        {/* 기업 행 목록 */}
-        {rows.map((company, ri) => {
-          const logoColor = LOGO_PALETTE[ri % LOGO_PALETTE.length];
-          return (
-            <div
-              key={company.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 16,
-                padding: "14px 18px",
-                borderBottom: `1px solid ${colors.border}`,
-              }}
-            >
-              {/* 기업 */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, width: 220, flexShrink: 0 }}>
+        {/* 기업 행 목록 — 좁으면 가로 스크롤로 자연스럽게 밀림 (theVC 방식) */}
+        <div style={{ overflowX: "auto" }}>
+          <div style={{ minWidth: 760 }}>
+            {rows.map((company, ri) => {
+              const logoColor = LOGO_PALETTE[ri % LOGO_PALETTE.length];
+              return (
                 <div
+                  key={company.id}
                   style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: "50%",
-                    background: logoColor,
-                    color: "#fff",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    flexShrink: 0,
+                    gap: 16,
+                    padding: "14px 18px",
+                    borderBottom: `1px solid ${colors.border}`,
                   }}
                 >
-                  {company.name.slice(0, 2)}
-                </div>
-                <div style={{ minWidth: 0 }}>
+                  {/* 기업 */}
                   <div
                     style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: colors.textBase,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      width: 220,
+                      flexShrink: 0,
                     }}
                   >
-                    {company.name}
-                  </div>
-                  <div style={{ fontSize: 12, color: colors.textSub }}>{company.sector}</div>
-                </div>
-              </div>
-
-              {/* 데이터 필드 (선택 FY 기준, 셀마다 출처 뱃지) */}
-              <div style={{ display: "flex", gap: 20, flex: 1, minWidth: 0 }}>
-                {cols.map((col) => {
-                  const item = CODE_MAP.get(col.code) as CatalogRaw | undefined;
-                  const cell = item ? getBulkCell(company.id, item, year) : undefined;
-                  // 잠금 = 출처 tier가 프리미엄(SR·NICE)일 때 (비로그인 기준)
-                  const locked = cell
-                    ? !canAccess("guest", tierOf(cell.sourceCode, year, year))
-                    : false;
-                  const sb = cell ? sourceBadgeColors[cell.sourceCode] : undefined;
-                  return (
-                    <div key={col.code} style={{ minWidth: 96, flex: 1 }}>
-                      <div style={{ fontSize: 11, color: colors.textSub, marginBottom: 3 }}>
-                        {col.label}
-                      </div>
-                      {locked ? (
-                        <div style={{ fontSize: 13, color: colors.primary, fontWeight: 600 }}>
-                          <LockOutlined /> 로그인 필요
-                          {sb && (
-                            <span
-                              style={{
-                                fontSize: 9,
-                                fontWeight: 700,
-                                color: sb.fg,
-                                background: sb.bg,
-                                padding: "1px 4px",
-                                borderRadius: 3,
-                                marginLeft: 6,
-                              }}
-                            >
-                              {cell?.sourceCode}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: cell?.value === null ? colors.textHint : colors.textBase,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                          }}
-                        >
-                          {cell?.display ?? "-"}
-                          {sb && cell?.value !== null && (
-                            <span
-                              style={{
-                                fontSize: 9,
-                                fontWeight: 700,
-                                color: sb.fg,
-                                background: sb.bg,
-                                padding: "1px 4px",
-                                borderRadius: 3,
-                              }}
-                            >
-                              {cell?.sourceCode}
-                            </span>
-                          )}
-                        </div>
-                      )}
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: "50%",
+                        background: logoColor,
+                        color: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {company.name.slice(0, 2)}
                     </div>
-                  );
-                })}
-              </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: colors.textBase,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {company.name}
+                      </div>
+                      <div style={{ fontSize: 12, color: colors.textSub }}>{company.sector}</div>
+                    </div>
+                  </div>
 
-              {/* 상세페이지 보기 */}
-              <Button onClick={() => navigate(`/company/${company.id}`)} style={{ flexShrink: 0 }}>
-                상세페이지 보기
-              </Button>
-            </div>
-          );
-        })}
+                  {/* 데이터 필드 (선택 FY 기준, 셀마다 출처 뱃지) */}
+                  <div style={{ display: "flex", gap: 20, flex: 1, minWidth: 0 }}>
+                    {cols.map((col) => {
+                      const item = CODE_MAP.get(col.code) as CatalogRaw | undefined;
+                      const cell = item ? getBulkCell(company.id, item, year) : undefined;
+                      // 잠금 = 출처 tier가 프리미엄(SR·NICE)일 때 (비로그인 기준)
+                      const locked = cell
+                        ? !canAccess("guest", tierOf(cell.sourceCode, year, year))
+                        : false;
+                      const sb = cell ? sourceBadgeColors[cell.sourceCode] : undefined;
+                      return (
+                        <div key={col.code} style={{ minWidth: 96, flex: 1 }}>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: colors.textSub,
+                              marginBottom: 3,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {col.label}
+                          </div>
+                          {locked ? (
+                            <div
+                              style={{
+                                fontSize: 13,
+                                color: colors.primary,
+                                fontWeight: 600,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              <LockOutlined /> 로그인 필요
+                              {sb && (
+                                <span
+                                  style={{
+                                    fontSize: 9,
+                                    fontWeight: 700,
+                                    color: sb.fg,
+                                    background: sb.bg,
+                                    padding: "1px 4px",
+                                    borderRadius: 3,
+                                    marginLeft: 6,
+                                  }}
+                                >
+                                  {cell?.sourceCode}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <div
+                              style={{
+                                fontSize: 13,
+                                fontWeight: 600,
+                                color: cell?.value === null ? colors.textHint : colors.textBase,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {cell?.display ?? "-"}
+                              {sb && cell?.value !== null && (
+                                <span
+                                  style={{
+                                    fontSize: 9,
+                                    fontWeight: 700,
+                                    color: sb.fg,
+                                    background: sb.bg,
+                                    padding: "1px 4px",
+                                    borderRadius: 3,
+                                  }}
+                                >
+                                  {cell?.sourceCode}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 상세페이지 보기 */}
+                  <Button
+                    onClick={() => navigate(`/company/${company.id}`)}
+                    style={{ flexShrink: 0 }}
+                  >
+                    상세페이지 보기
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* 페이지네이션 */}
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, padding: "14px 0" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 8,
+            padding: "14px 0",
+          }}
+        >
           <button
             onClick={() => setPage((p) => (p + 1) % PAGES)}
             style={{
@@ -276,17 +316,6 @@ export function CompanyDataFeed() {
             {page + 1} / {PAGES}
           </span>
         </div>
-      </div>
-
-      {/* 안내: 셀마다 출처가 다름 (우리 데이터 차별점) */}
-      <div style={{ marginTop: 8, fontSize: 12, color: colors.textHint }}>
-        {tab !== "all" && (
-          <>
-            <span style={{ color: categoryColors[tab].fg, fontWeight: 700 }}>● </span>
-            {categoryColors[tab].name} 지표 ·{" "}
-          </>
-        )}
-        FY{year} 기준 · 값마다 출처(DART·SR·환경정보공개 등)가 셀 단위로 표시됩니다
       </div>
     </Section>
   );

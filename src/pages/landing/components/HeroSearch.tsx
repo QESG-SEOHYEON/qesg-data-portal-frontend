@@ -1,7 +1,7 @@
 // HeroSearch (랜딩 명세 2.1) — 가치 제안 + 통합 검색 바 + 바로가기 칩
 import type { IndicatorItem } from "@/types";
 import { INDICATORS } from "@/mock/indicators";
-import { colors } from "@/theme/tokens";
+import { colors, layout } from "@/theme/tokens";
 import { SearchWidget } from "@/pages/search/components/SearchWidget";
 import { CategoryBadge } from "@/pages/search/components/CategoryBadge";
 
@@ -25,7 +25,7 @@ export function HeroSearch() {
         borderBottom: `1px solid ${colors.border}`,
       }}
     >
-      <div style={{ maxWidth: 960, margin: "0 auto", textAlign: "center" }}>
+      <div style={{ maxWidth: layout.contentMaxWidth, margin: "0 auto", textAlign: "center" }}>
         <h1
           style={{
             margin: 0,

@@ -87,7 +87,7 @@ export function DataCatalog() {
   const catalog = getCatalog();
 
   return (
-    <Section title="ESG 테마별 데이터 조회">
+    <Section title="ESG 테마 데이터">
       {CATEGORIES.map((cat) => {
         const meta = categoryColors[cat];
         const all = catalog.filter((c) => c.category === cat);

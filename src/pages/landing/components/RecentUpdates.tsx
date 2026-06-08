@@ -5,11 +5,11 @@ import { colors } from "@/theme/tokens";
 import { sourceBadgeColors } from "@/mock/sources";
 import { Section } from "./Section";
 
-export function RecentUpdates() {
+export function RecentUpdates({ embedded = false }: { embedded?: boolean }) {
   const updates = getRecentUpdates();
 
   return (
-    <Section title="최근 업데이트" extra={`최종 갱신: ${DATA_LAST_UPDATED}`}>
+    <Section title="최근 업데이트" extra={`최종 갱신: ${DATA_LAST_UPDATED}`} embedded={embedded}>
       <div
         style={{
           background: colors.bgSurface,
@@ -46,7 +46,19 @@ export function RecentUpdates() {
               >
                 {u.source}
               </span>
-              <span style={{ flex: 1, fontSize: 14, color: colors.textBase }}>{u.target}</span>
+              <span
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  fontSize: 14,
+                  color: colors.textBase,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {u.target}
+              </span>
               <span
                 style={{
                   fontSize: 13,
