@@ -1,8 +1,8 @@
-// RecentUpdates (랜딩 명세 2.3, 축②) — 신선도. 출처·대상·건수·시점 리스트
+// RecentUpdates (랜딩 명세 2.3, 축②) — 신선도. 대상·건수·시점 리스트
+// ⚠️ 출처(데이터 소스) 표시는 사내 정책 확정 전까지 화면에서 끔 — u.source 데이터는 유지, 렌더만 생략.
 import { ClockCircleOutlined } from "@ant-design/icons";
-import { getRecentUpdates, DATA_LAST_UPDATED, toSourceCode } from "@/mock/landing";
+import { getRecentUpdates, DATA_LAST_UPDATED } from "@/mock/landing";
 import { colors } from "@/theme/tokens";
-import { sourceBadgeColors } from "@/mock/sources";
 import { Section } from "./Section";
 
 export function RecentUpdates({ embedded = false }: { embedded?: boolean }) {
@@ -19,7 +19,6 @@ export function RecentUpdates({ embedded = false }: { embedded?: boolean }) {
         }}
       >
         {updates.map((u, idx) => {
-          const c = sourceBadgeColors[toSourceCode(u.source)];
           return (
             <div
               key={idx}
@@ -31,21 +30,6 @@ export function RecentUpdates({ embedded = false }: { embedded?: boolean }) {
                 borderTop: idx === 0 ? "none" : `1px solid ${colors.border}`,
               }}
             >
-              <span
-                style={{
-                  background: c.bg,
-                  color: c.fg,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  padding: "4px 8px",
-                  borderRadius: 6,
-                  whiteSpace: "nowrap",
-                  minWidth: 56,
-                  textAlign: "center",
-                }}
-              >
-                {u.source}
-              </span>
               <span
                 style={{
                   flex: 1,

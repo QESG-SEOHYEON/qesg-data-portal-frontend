@@ -1,13 +1,13 @@
 // DataCatalog (랜딩 명세 2.5, 축① 구체화) — E/S/G 지표 카드 그리드
-// 카드 메타 3종: 출처 뱃지 · 보유 연도 · 커버리지(기업 수). 내부코드 비노출.
+// 카드 메타: 보유 연도 · 커버리지(기업 수). 내부코드 비노출.
+// ⚠️ 출처(데이터 소스) 표시는 사내 정책 확정 전까지 화면에서 끔 — item.sources 데이터는 유지, 렌더만 생략.
 // 맛보기: 그룹당 CATALOG_PREVIEW_PER_CATEGORY 개만 노출 → 하단 "더 보기"가 로그인 유도.
 import { useState } from "react";
 import { RightOutlined } from "@ant-design/icons";
 import type { Category } from "@/types";
-import { getCatalog, toSourceCode, CATALOG_PREVIEW_PER_CATEGORY } from "@/mock/landing";
+import { getCatalog, CATALOG_PREVIEW_PER_CATEGORY } from "@/mock/landing";
 import type { CatalogItem } from "@/mock/landing";
 import { colors, categoryColors } from "@/theme/tokens";
-import { SOURCES, sourceBadgeColors } from "@/mock/sources";
 import { Section } from "./Section";
 import { Marquee } from "./Marquee";
 import { LoginModal } from "./LoginModal";
@@ -15,27 +15,6 @@ import { LoginModal } from "./LoginModal";
 const CATEGORIES: Category[] = ["E", "S", "G"];
 // 카테고리별 마퀴 속도(초) — 약간씩 다르게 둬서 줄이 동기화돼 보이지 않게
 const MARQUEE_DUR: Record<Category, number> = { E: 38, S: 46, G: 34 };
-
-function SourceTag({ label }: { label: string }) {
-  const code = toSourceCode(label);
-  const c = sourceBadgeColors[code];
-  return (
-    <span
-      style={{
-        background: c.bg,
-        color: c.fg,
-        fontSize: 10,
-        fontWeight: 600,
-        padding: "2px 6px",
-        borderRadius: 4,
-        whiteSpace: "nowrap",
-      }}
-      title={SOURCES[code].label}
-    >
-      {label}
-    </span>
-  );
-}
 
 function Card({ item, onClick }: { item: CatalogItem; onClick?: () => void }) {
   return (
@@ -60,11 +39,6 @@ function Card({ item, onClick }: { item: CatalogItem; onClick?: () => void }) {
     >
       <div style={{ fontSize: 14, fontWeight: 600, color: colors.textBase, lineHeight: 1.4 }}>
         {item.label}
-      </div>
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-        {item.sources.map((s) => (
-          <SourceTag key={s} label={s} />
-        ))}
       </div>
       <div
         style={{
