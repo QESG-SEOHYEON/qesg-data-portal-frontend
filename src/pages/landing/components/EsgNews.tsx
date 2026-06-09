@@ -76,7 +76,7 @@ function CompanyTag({ companies }: { companies: string[] }) {
   );
 }
 
-// date 필터: "YYYY-MM-DD" 특정일 | "popular"(최근 일주일 조회순)
+// date 필터: "YYYY-MM-DD" 특정일 | "latestWeek"(최근 일주일 전체)
 type DateKey = string;
 
 export function EsgNews() {
@@ -109,7 +109,7 @@ export function EsgNews() {
 
   const byTheme = all.filter((n) => theme === "all" || n.theme === theme);
   const filtered =
-    date === "popular"
+    date === "latestWeek"
       ? byTheme.filter((n) => weekSet.has(n.date)).sort((a, b) => b.views - a.views) // 최근 일주일 조회순
       : byTheme.filter((n) => n.date === date);
 
@@ -189,8 +189,8 @@ export function EsgNews() {
           ))}
           <DateChip
             label="최근 일주일"
-            active={date === "popular"}
-            onClick={reset(() => setDate("popular"))}
+            active={date === "latestWeek"}
+            onClick={reset(() => setDate("latestWeek"))}
           />
         </div>
 
@@ -301,7 +301,7 @@ export function EsgNews() {
                 cursor: "pointer",
               }}
             >
-              다음 페이지 보기
+              다음 페이지
             </button>
             <span style={{ fontSize: 13, color: colors.textHint }}>
               {safePage + 1} / {pages}

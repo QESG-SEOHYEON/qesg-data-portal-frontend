@@ -19,10 +19,15 @@ const TABS = [
   { value: "env", label: "환경정보공개", locked: true },
 ];
 
+// 보고서 탭별 표시 시작 구간
+const TAB_OFFSET: Record<string, number> = { sr: 0, cgr: 6, br: 12, env: 18 };
+
 export function SrDisclosureStatus({ embedded = false }: { embedded?: boolean }) {
   const [loginOpen, setLoginOpen] = useState(false);
   const [tab, setTab] = useState("sr");
-  const rows = getRecentSrDisclosures().slice(0, PREVIEW);
+  const all = getRecentSrDisclosures();
+  const start = (TAB_OFFSET[tab] ?? 0) % Math.max(1, all.length);
+  const rows = all.slice(start, start + PREVIEW);
   const current = TABS.find((t) => t.value === tab) ?? TABS[0];
 
   return (
@@ -38,124 +43,131 @@ export function SrDisclosureStatus({ embedded = false }: { embedded?: boolean })
       }
       embedded={embedded}
     >
-      <FieldTabs options={TABS.map((t) => ({ value: t.value, label: t.label }))} value={tab} onChange={setTab} />
+      <div
+        style={{
+          background: colors.bgSurface,
+          border: `1px solid ${colors.border}`,
+          borderRadius: 12,
+          padding: 18,
+        }}
+      >
+        {/* 보고서 종류 탭 — 카드 내부 */}
+        <FieldTabs
+          options={TABS.map((t) => ({ value: t.value, label: t.label }))}
+          value={tab}
+          onChange={setTab}
+        />
 
-      {!current.locked ? (
-        <>
-          <div
-            style={{
-              background: colors.bgSurface,
-              border: `1px solid ${colors.border}`,
-              borderRadius: 12,
-              overflow: "hidden",
-            }}
-          >
-            {rows.map((r, idx) => (
-              <div
-                key={r.stockCode}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "12px 16px",
-                  borderTop: idx === 0 ? "none" : `1px solid ${colors.border}`,
-                }}
-              >
-                <div style={{ width: 96, flexShrink: 0 }}>
-                  <div style={{ fontSize: 12.5, color: colors.textBase, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                    {r.disclosedAt}
-                  </div>
-                  <div style={{ fontSize: 11, color: colors.textHint }}>{r.daysAgo}일 전</div>
-                </div>
-                <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                  <CheckCircleFilled style={{ color: colors.accent, fontSize: 13, flexShrink: 0 }} />
-                  <span style={{ fontSize: 14, color: colors.textBase, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {r.company}
-                  </span>
-                  <span style={{ fontSize: 12, color: colors.textSub, flexShrink: 0 }}>{r.stockCode}</span>
-                </div>
-                <a
-                  href={r.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ fontSize: 12.5, color: colors.primary, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}
+        {!current.locked ? (
+          <>
+            <div>
+              {rows.map((r, idx) => (
+                <div
+                  key={r.stockCode}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "12px 2px",
+                    borderTop: idx === 0 ? "none" : `1px solid ${colors.border}`,
+                  }}
                 >
-                  원문 <LinkOutlined style={{ fontSize: 11 }} />
-                </a>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 10, fontSize: 11.5, color: colors.textHint }}>
-            최근 30일 공시 기준 · 원문 링크로 직접 확인(파일 다운로드 미제공)
-          </div>
-        </>
-      ) : (
-        /* 잠금 보고서 — 모자이크(블러) + 로그인 필요 */
-        <div style={{ position: "relative", border: `1px solid ${colors.border}`, borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ filter: "blur(5px)", userSelect: "none", pointerEvents: "none", background: colors.bgSurface }}>
-            {rows.map((r, idx) => (
-              <div
-                key={r.stockCode}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "12px 16px",
-                  borderTop: idx === 0 ? "none" : `1px solid ${colors.border}`,
-                }}
-              >
-                <div style={{ width: 96, flexShrink: 0 }}>
-                  <div style={{ fontSize: 12.5, color: colors.textBase, fontWeight: 600 }}>{r.disclosedAt}</div>
-                  <div style={{ fontSize: 11, color: colors.textHint }}>{r.daysAgo}일 전</div>
+                  <div style={{ width: 96, flexShrink: 0 }}>
+                    <div style={{ fontSize: 12.5, color: colors.textBase, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                      {r.disclosedAt}
+                    </div>
+                    <div style={{ fontSize: 11, color: colors.textHint }}>{r.daysAgo}일 전</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                    <CheckCircleFilled style={{ color: colors.accent, fontSize: 13, flexShrink: 0 }} />
+                    <span style={{ fontSize: 14, color: colors.textBase, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {r.company}
+                    </span>
+                    <span style={{ fontSize: 12, color: colors.textSub, flexShrink: 0 }}>{r.stockCode}</span>
+                  </div>
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 12.5, color: colors.primary, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}
+                  >
+                    원문 <LinkOutlined style={{ fontSize: 11 }} />
+                  </a>
                 </div>
-                <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                  <CheckCircleFilled style={{ color: colors.accent, fontSize: 13 }} />
-                  <span style={{ fontSize: 14, color: colors.textBase, fontWeight: 600 }}>{r.company}</span>
-                  <span style={{ fontSize: 12, color: colors.textSub }}>{r.stockCode}</span>
+              ))}
+            </div>
+            <div style={{ marginTop: 12, fontSize: 11.5, color: colors.textHint }}>
+              최근 30일 공시 기준 · 원문 링크로 직접 확인(파일 다운로드 미제공)
+            </div>
+          </>
+        ) : (
+          /* 잠금 보고서 — 모자이크(블러) + 로그인 필요 */
+          <div style={{ position: "relative" }}>
+            <div style={{ filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>
+              {rows.map((r, idx) => (
+                <div
+                  key={r.stockCode}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "12px 2px",
+                    borderTop: idx === 0 ? "none" : `1px solid ${colors.border}`,
+                  }}
+                >
+                  <div style={{ width: 96, flexShrink: 0 }}>
+                    <div style={{ fontSize: 12.5, color: colors.textBase, fontWeight: 600 }}>{r.disclosedAt}</div>
+                    <div style={{ fontSize: 11, color: colors.textHint }}>{r.daysAgo}일 전</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                    <CheckCircleFilled style={{ color: colors.accent, fontSize: 13 }} />
+                    <span style={{ fontSize: 14, color: colors.textBase, fontWeight: 600 }}>{r.company}</span>
+                    <span style={{ fontSize: 12, color: colors.textSub }}>{r.stockCode}</span>
+                  </div>
+                  <span style={{ fontSize: 12.5, color: colors.primary, fontWeight: 600 }}>원문</span>
                 </div>
-                <span style={{ fontSize: 12.5, color: colors.primary, fontWeight: 600 }}>원문</span>
-              </div>
-            ))}
-          </div>
-          {/* 로그인 오버레이 */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              background: "rgba(244,246,248,0.55)",
-              textAlign: "center",
-              padding: 16,
-            }}
-          >
+              ))}
+            </div>
+            {/* 로그인 오버레이 */}
             <div
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                background: `${colors.accent}1A`,
-                color: colors.accent,
-                display: "inline-flex",
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 20,
+                gap: 10,
+                background: "rgba(255,255,255,0.55)",
+                textAlign: "center",
+                padding: 16,
               }}
             >
-              <LockOutlined />
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: `${colors.accent}1A`,
+                  color: colors.accent,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 20,
+                }}
+              >
+                <LockOutlined />
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: colors.textBase }}>
+                {current.label}는 로그인 후 확인 가능
+              </div>
+              <Button type="primary" onClick={() => setLoginOpen(true)}>
+                로그인하고 보기
+              </Button>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: colors.textBase }}>
-              {current.label}는 로그인 후 확인 가능
-            </div>
-            <Button type="primary" onClick={() => setLoginOpen(true)}>
-              로그인하고 보기
-            </Button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </Section>

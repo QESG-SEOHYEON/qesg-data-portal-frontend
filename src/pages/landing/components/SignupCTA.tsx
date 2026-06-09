@@ -1,10 +1,8 @@
 // SignupCTA (랜딩 명세 2.6) — 가입 유도. 회원 유형 분기는 힌트만.
 import { Button } from "antd";
-import { getCoverageStats } from "@/mock/landing";
 import { colors, layout } from "@/theme/tokens";
 
 export function SignupCTA() {
-  const total = getCoverageStats().indicators;
   return (
     <section style={{ padding: "20px 20px 80px" }}>
       <div

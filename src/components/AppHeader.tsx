@@ -46,26 +46,9 @@ export function AppHeader() {
         gap: 24,
       }}
     >
-      {/* 로고 (목업 플레이스홀더 — 실제 로고 이미지로 교체 예정) */}
+      {/* 로고 */}
       <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: 30,
-            padding: "0 12px",
-            border: `1px dashed ${colors.border}`,
-            borderRadius: 6,
-            background: colors.bgPage,
-            color: colors.textSub,
-            fontSize: 13,
-            fontWeight: 700,
-            whiteSpace: "nowrap",
-          }}
-        >
-          (큐뎁 로고)
-        </span>
+        <img src="/logos/qesg.svg" alt="QESG" style={{ height: 26, width: "auto", display: "block" }} />
       </Link>
 
       {isMobile ? (

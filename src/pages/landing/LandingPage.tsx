@@ -13,7 +13,6 @@ import { getCoverageStats } from "@/mock/landing";
 import { HeroSearch } from "./components/HeroSearch";
 import { DataCatalog } from "./components/DataCatalog";
 import { CompanyDataFeed } from "./components/CompanyDataFeed";
-import { CoverageStats } from "./components/CoverageStats";
 import { IndustryCompare } from "./components/IndustryCompare";
 import { SectorTrend } from "./components/SectorTrend";
 import { RecentUpdates } from "./components/RecentUpdates";
@@ -21,6 +20,7 @@ import { SrDisclosureStatus } from "./components/SrDisclosureStatus";
 import { EsgNews } from "./components/EsgNews";
 import { SignupCTA } from "./components/SignupCTA";
 import { LoginModal } from "./components/LoginModal";
+import { Footer } from "@/components/Footer";
 
 export function LandingPage() {
   const bp = useBreakpoint();
@@ -52,6 +52,8 @@ export function LandingPage() {
             <IndustrySectorPair />
             <EsgNews />
             <SrDisclosureStatus />
+            {/* 가입 CTA — 본문 컬럼 안(좌측 위젯들과 정렬) */}
+            <SignupCTA />
           </div>
           <aside
             style={{
@@ -79,13 +81,13 @@ export function LandingPage() {
           <EsgNews />
           {/* 최근 업데이트는 와이드 우측 레일 전용 → 여기선 SR 공시 현황만 */}
           {showSecondary && <SrDisclosureStatus />}
+          {/* 가입 CTA — 위젯들과 같은 흐름 */}
+          <SignupCTA />
         </>
       )}
 
-      {/* 커버리지 하이라이트 — 홍보성 시각효과, 가입 CTA 바로 위(전폭) */}
-      <CoverageStats />
-      {/* 항상 — 전환 (전폭) */}
-      <SignupCTA />
+      {/* 사이트 하단 푸터 (전폭) */}
+      <Footer />
 
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </main>
@@ -127,7 +129,7 @@ function RailSignupCard({ onClick }: { onClick: () => void }) {
         전체 {total}개 지표 열람
       </div>
       <div style={{ fontSize: 12.5, color: colors.textSub, margin: "6px 0 12px", lineHeight: 1.5 }}>
-        기업별 상세·다개년 추이·출처까지 로그인 후 모두 확인하세요
+        기업별 상세·다개년 추이까지 로그인 후 모두 확인하세요
       </div>
       <Button type="primary" block onClick={onClick}>
         로그인 / 회원가입

@@ -3,7 +3,7 @@
 // 셀마다 출처 뱃지(출처 투명성). 잠금은 우리 출처 tier(공개=무료/SR·NICE 가공=프리미엄) 기준.
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Button, Segmented } from "antd";
+import { Segmented } from "antd";
 import { RightOutlined, LockOutlined } from "@ant-design/icons";
 import type { Category } from "@/types";
 import { BULK_COMPANIES, BULK_YEARS, BULK_LATEST_YEAR, getBulkCell } from "@/mock/bulkData";
@@ -11,7 +11,6 @@ import { CATALOG_RAW } from "@/mock/catalogData";
 import type { CatalogRaw } from "@/mock/catalogData";
 import { tierOf, canAccess } from "@/mock/access";
 import { colors } from "@/theme/tokens";
-import { sourceBadgeColors } from "@/mock/sources";
 import { Section } from "./Section";
 
 type Tab = "all" | Category;
@@ -28,21 +27,25 @@ const TAB_COLS: Record<Tab, { code: string; label: string }[]> = {
     { code: "E3_1", label: "온실가스 배출량" },
     { code: "S13", label: "여성 임직원 비율" },
     { code: "G5", label: "사외이사 비중" },
+    { code: "S9", label: "1인당 평균임금" },
   ],
   E: [
     { code: "E3_1", label: "온실가스 배출량" },
     { code: "E5", label: "에너지 사용량" },
     { code: "E16", label: "폐기물 배출량" },
+    { code: "E6", label: "신재생에너지" },
   ],
   S: [
     { code: "S13", label: "여성 임직원 비율" },
     { code: "S9", label: "1인당 평균임금" },
     { code: "S11", label: "노사분규 작업중단" },
+    { code: "S43", label: "장애인 고용률" },
   ],
   G: [
     { code: "G5", label: "사외이사 비중" },
     { code: "G7", label: "이사회 개최 건수" },
     { code: "G29", label: "등기임원 여성비율" },
+    { code: "G8", label: "사외이사 출석률" },
   ],
 };
 
@@ -135,18 +138,22 @@ export function CompanyDataFeed() {
 
         {/* 기업 행 목록 — 좁으면 가로 스크롤로 자연스럽게 밀림 (theVC 방식) */}
         <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 760 }}>
+          <div style={{ minWidth: 900 }}>
             {rows.map((company, ri) => {
               const logoColor = LOGO_PALETTE[ri % LOGO_PALETTE.length];
               return (
                 <div
                   key={company.id}
+                  onClick={() => navigate(`/company/${company.id}`)}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = colors.rowHover)}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 16,
                     padding: "14px 18px",
                     borderBottom: `1px solid ${colors.border}`,
+                    cursor: "pointer",
                   }}
                 >
                   {/* 기업 */}
@@ -202,7 +209,6 @@ export function CompanyDataFeed() {
                       const locked = cell
                         ? !canAccess("guest", tierOf(cell.sourceCode, year, year))
                         : false;
-                      const sb = cell ? sourceBadgeColors[cell.sourceCode] : undefined;
                       return (
                         <div key={col.code} style={{ minWidth: 96, flex: 1 }}>
                           <div
@@ -227,21 +233,6 @@ export function CompanyDataFeed() {
                               }}
                             >
                               <LockOutlined /> 로그인 필요
-                              {sb && (
-                                <span
-                                  style={{
-                                    fontSize: 9,
-                                    fontWeight: 700,
-                                    color: sb.fg,
-                                    background: sb.bg,
-                                    padding: "1px 4px",
-                                    borderRadius: 3,
-                                    marginLeft: 6,
-                                  }}
-                                >
-                                  {cell?.sourceCode}
-                                </span>
-                              )}
                             </div>
                           ) : (
                             <div
@@ -256,34 +247,12 @@ export function CompanyDataFeed() {
                               }}
                             >
                               {cell?.display ?? "-"}
-                              {sb && cell?.value !== null && (
-                                <span
-                                  style={{
-                                    fontSize: 9,
-                                    fontWeight: 700,
-                                    color: sb.fg,
-                                    background: sb.bg,
-                                    padding: "1px 4px",
-                                    borderRadius: 3,
-                                  }}
-                                >
-                                  {cell?.sourceCode}
-                                </span>
-                              )}
                             </div>
                           )}
                         </div>
                       );
                     })}
                   </div>
-
-                  {/* 상세페이지 보기 */}
-                  <Button
-                    onClick={() => navigate(`/company/${company.id}`)}
-                    style={{ flexShrink: 0 }}
-                  >
-                    상세페이지 보기
-                  </Button>
                 </div>
               );
             })}
@@ -310,7 +279,7 @@ export function CompanyDataFeed() {
               cursor: "pointer",
             }}
           >
-            다음 페이지 보기
+            다음 페이지
           </button>
           <span style={{ fontSize: 13, color: colors.textHint }}>
             {page + 1} / {PAGES}
