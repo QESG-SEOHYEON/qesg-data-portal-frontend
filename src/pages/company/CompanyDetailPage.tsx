@@ -1,20 +1,20 @@
-// 단건 기업 상세 (기획안 4.2)
-// - 상단 E/S/G 탭 + 보유 지표 수 커버리지 뱃지
-// - 차트 뷰 / 테이블 뷰 토글 (동일 데이터)
-// - 셀 단위 출처·연도 뱃지 (DataTableView / DataChartView 내부)
-// - 플랜 셀렉터 → 출처 기준 tier 잠금 데모 (기획안 5.2, access.ts 단일 권한 레이어)
+// 개별 기업 ESG 상세 (개정 명세)
+// 헤더 → ESG 다타입 테이블(추이 아코디언) → AI 질의 → 공시원문 → 유사기업
+// 잠금은 플랜 셀렉터(access.ts tier). 평가·등급·전망 없음.
+// ⚠️ 출처(데이터 소스) 표시는 사내 정책 확정 전까지 화면에서 끔 — 데이터/TrustBlock 컴포넌트는 유지, 렌더만 생략.
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
-import { Segmented, Empty } from "antd";
-import { ArrowLeftOutlined, BarChartOutlined, TableOutlined } from "@ant-design/icons";
+import { Segmented, Button, Empty } from "antd";
+import { ArrowLeftOutlined, HeartOutlined } from "@ant-design/icons";
 import type { Category, ViewerPlan } from "@/types";
 import { getCompanyDetail } from "@/mock/companyDetail";
 import { PLAN_LABELS } from "@/mock/access";
-import { colors, categoryColors } from "@/theme/tokens";
-import { DataTableView } from "./components/DataTableView";
-import { DataChartView } from "./components/DataChartView";
+import { colors, categoryColors, layout } from "@/theme/tokens";
+import { EsgIndicatorTable } from "./components/EsgIndicatorTable";
+import { AskAboutCompany } from "./components/AskAboutCompany";
+import { DisclosureSources } from "./components/DisclosureSources";
+import { SimilarCompanies } from "./components/SimilarCompanies";
 
-type ViewMode = "table" | "chart";
 const CATEGORIES: Category[] = ["E", "S", "G"];
 const PLANS: ViewerPlan[] = ["guest", "member", "enterprise"];
 
@@ -22,7 +22,6 @@ export function CompanyDetailPage() {
   const { companyId = "" } = useParams();
   const [plan, setPlan] = useState<ViewerPlan>("member");
   const [tab, setTab] = useState<Category>("E");
-  const [view, setView] = useState<ViewMode>("table");
 
   const detail = useMemo(() => getCompanyDetail(companyId, plan), [companyId, plan]);
 
@@ -36,60 +35,58 @@ export function CompanyDetailPage() {
     );
   }
 
-  const activeSeries = detail.byCategory[tab];
-
   return (
     <Page>
-      {/* 상단: 뒤로 + 기업명 */}
-      <div style={{ marginBottom: 20 }}>
-        <Link
-          to="/"
-          style={{ fontSize: 13, color: colors.textSub, display: "inline-flex", gap: 6, alignItems: "center" }}
+      <Link to="/" style={{ fontSize: 13, color: colors.textSub, display: "inline-flex", gap: 6, alignItems: "center" }}>
+        <ArrowLeftOutlined /> 검색
+      </Link>
+
+      {/* ── 헤더 ── */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 14, margin: "12px 0 20px", flexWrap: "wrap" }}>
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 12,
+            background: colors.primary,
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 18,
+            fontWeight: 800,
+            flexShrink: 0,
+          }}
         >
-          <ArrowLeftOutlined /> 검색
-        </Link>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 10 }}>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: colors.textBase }}>
-            {detail.company.label}
-          </h1>
-          <span style={{ fontSize: 14, color: colors.textSub, fontVariantNumeric: "tabular-nums" }}>
-            {detail.company.id}
-          </span>
+          {detail.name.slice(0, 2)}
         </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: colors.textBase }}>{detail.name}</h1>
+            <span style={{ fontSize: 14, color: colors.textSub, fontVariantNumeric: "tabular-nums" }}>{detail.id}</span>
+          </div>
+          <div style={{ fontSize: 12.5, color: colors.textHint, marginTop: 4 }}>
+            {detail.industry} · {detail.market} · {detail.size} · 결산 {detail.fiscalMonth}
+          </div>
+        </div>
+        <Button icon={<HeartOutlined />} onClick={() => console.log("save-company")}>
+          관심기업 저장
+        </Button>
       </div>
 
-      {/* 컨트롤 바: 플랜 셀렉터(잠금 데모) + 뷰 토글 */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          marginBottom: 16,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 13, color: colors.textSub }}>조회 플랜</span>
-          <Segmented
-            size="small"
-            value={plan}
-            onChange={(v) => setPlan(v as ViewerPlan)}
-            options={PLANS.map((p) => ({ value: p, label: PLAN_LABELS[p] }))}
-          />
-        </div>
+      {/* 플랜 셀렉터 (잠금 데모) */}
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+        <span style={{ fontSize: 13, color: colors.textSub }}>조회 플랜</span>
         <Segmented
-          value={view}
-          onChange={(v) => setView(v as ViewMode)}
-          options={[
-            { value: "table", label: "테이블", icon: <TableOutlined /> },
-            { value: "chart", label: "차트", icon: <BarChartOutlined /> },
-          ]}
+          size="small"
+          value={plan}
+          onChange={(v) => setPlan(v as ViewerPlan)}
+          options={PLANS.map((p) => ({ value: p, label: PLAN_LABELS[p] }))}
         />
       </div>
 
-      {/* E/S/G 탭 + 커버리지 뱃지 */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 18, borderBottom: `1px solid ${colors.border}` }}>
+      {/* ── ESG 데이터 (다타입 테이블) ── */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: `1px solid ${colors.border}` }}>
         {CATEGORIES.map((c) => {
           const meta = categoryColors[c];
           const isActive = tab === c;
@@ -112,7 +109,7 @@ export function CompanyDetailPage() {
                 marginBottom: -1,
               }}
             >
-              {meta.name}
+              {meta.name} {c}
               <span
                 style={{
                   background: isActive ? meta.bg : colors.bgPage,
@@ -130,21 +127,25 @@ export function CompanyDetailPage() {
         })}
       </div>
 
-      {/* 본문 */}
-      {view === "table" ? (
-        <div
-          style={{
-            background: colors.bgSurface,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 12,
-            padding: 4,
-          }}
-        >
-          <DataTableView series={activeSeries} years={detail.years} />
-        </div>
-      ) : (
-        <DataChartView series={activeSeries} />
-      )}
+      <div style={{ background: colors.bgSurface, border: `1px solid ${colors.border}`, borderRadius: 12, padding: "4px 14px" }}>
+        <EsgIndicatorTable
+          rows={detail.indicators[tab]}
+          trend={detail.trend}
+          onCompare={(l) => console.log("indicator compare →", l)}
+        />
+      </div>
+      <div style={{ marginTop: 10, fontSize: 11.5, color: colors.textHint }}>
+        0값은 미공개로 처리됩니다. 공시 연도는 {detail.baseYear}년 기준입니다.
+      </div>
+
+      {/* ── AI 질의 ── */}
+      <AskAboutCompany detail={detail} />
+
+      {/* ── 공시 원문 ── */}
+      <DisclosureSources detail={detail} />
+
+      {/* ── 유사 기업 ── */}
+      <SimilarCompanies detail={detail} />
     </Page>
   );
 }
@@ -152,7 +153,7 @@ export function CompanyDetailPage() {
 function Page({ children }: { children: React.ReactNode }) {
   return (
     <main style={{ minHeight: "100vh", background: colors.bgPage }}>
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 20px 80px" }}>{children}</div>
+      <div style={{ maxWidth: layout.contentMaxWidth, margin: "0 auto", padding: "32px 20px 80px" }}>{children}</div>
     </main>
   );
 }
