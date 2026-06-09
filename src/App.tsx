@@ -4,7 +4,7 @@ import { qesgTheme } from "@/theme/tokens";
 import { Layout } from "@/components/Layout";
 import { LandingPage } from "@/pages/landing/LandingPage";
 import { CompanyDetailPage } from "@/pages/company/CompanyDetailPage";
-import { BulkTablePage } from "@/pages/bulk/BulkTablePage";
+import { ConditionSearchPage } from "@/pages/condition/ConditionSearchPage";
 
 export default function App() {
   return (
@@ -15,7 +15,7 @@ export default function App() {
             <Route element={<Layout />}>
               <Route path="/" element={<LandingPage />} />
               <Route path="/company/:companyId" element={<CompanyDetailPage />} />
-              <Route path="/bulk" element={<BulkTablePage />} />
+              <Route path="/bulk" element={<ConditionSearchPage />} />
             </Route>
           </Routes>
         </BrowserRouter>

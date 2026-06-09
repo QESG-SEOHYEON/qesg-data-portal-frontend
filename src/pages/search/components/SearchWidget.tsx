@@ -37,6 +37,13 @@ export function SearchWidget({ maxWidth = layout.searchMaxWidth, onSelected }: P
     onSelected?.(item);
   }
 
+  // 결과 클릭 없이 그냥 검색(Enter) → 조건 검색 페이지로 검색어 전달
+  function handleSubmit() {
+    const q = query.trim();
+    if (!q) return;
+    navigate(`/bulk?q=${encodeURIComponent(q)}`);
+  }
+
   return (
     <div style={{ width: "100%", maxWidth, position: "relative", margin: "0 auto" }}>
       <SearchBar
@@ -46,6 +53,7 @@ export function SearchWidget({ maxWidth = layout.searchMaxWidth, onSelected }: P
         onScopeChange={setScope}
         onFocus={() => setFocused(true)}
         onClear={() => setQuery("")}
+        onSubmit={handleSubmit}
       />
       {showDropdown && (
         <AutocompleteDropdown result={result} query={query} onSelect={handleSelect} />

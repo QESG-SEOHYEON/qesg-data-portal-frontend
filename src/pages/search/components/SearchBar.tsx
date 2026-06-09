@@ -11,6 +11,7 @@ interface Props {
   onScopeChange: (scope: SearchScope) => void;
   onFocus?: () => void;
   onClear: () => void;
+  onSubmit?: () => void;
 }
 
 const SCOPE_OPTIONS: { value: SearchScope; label: string }[] = [
@@ -26,6 +27,7 @@ export function SearchBar({
   onScopeChange,
   onFocus,
   onClear,
+  onSubmit,
 }: Props) {
   return (
     <div
@@ -55,6 +57,7 @@ export function SearchBar({
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         onFocus={onFocus}
+        onPressEnter={onSubmit}
         placeholder="기업명 · 종목코드 또는 지표를 검색하세요"
         variant="borderless"
         prefix={<SearchOutlined style={{ color: colors.textHint, fontSize: 16 }} />}
