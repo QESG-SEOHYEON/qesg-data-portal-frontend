@@ -1,35 +1,60 @@
-// 글로벌 헤더 — 로고 + 메뉴 + 로그인. 전 화면 공통(Layout에서 렌더).
-// 좁아지면(모바일) 메뉴가 로그인 버튼과 겹치지 않도록 햄버거로 접는다(요소 단위 숨김).
+// 글로벌 GNB (마스터 명세 1장) — 홈 | 통합검색▾ | 워크스페이스▾ | 요금제 | 문의/제보 | (로그인)
+// 통합검색▾: 조건검색·환경/사회/지배구조 대량테이블·뉴스·공시
+// 워크스페이스▾: AI분석·기업비교·마이포트폴리오 (회원 전용)
+// 미구현 항목은 "준비 중" 토스트. 좁아지면 햄버거로 접음.
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Button, Dropdown } from "antd";
-import { MenuOutlined } from "@ant-design/icons";
+import { Button, Dropdown, App } from "antd";
+import { MenuOutlined, DownOutlined } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { colors } from "@/theme/tokens";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { LoginModal } from "@/pages/landing/components/LoginModal";
 
-const NAV = [
-  { label: "홈", to: "/" },
-  { label: "통합 검색", to: "/bulk" },
+const SEARCH_ITEMS: MenuProps["items"] = [
+  { key: "/bulk", label: "통합 검색" },
+  { type: "divider" },
+  { key: "/bulk?cat=E", label: "환경 (E)" },
+  { key: "/bulk?cat=S", label: "사회 (S)" },
+  { key: "/bulk?cat=G", label: "지배구조 (G)" },
+  { type: "divider" },
+  { key: "soon:news", label: "ESG 뉴스/소식" },
+  { key: "soon:disclosure", label: "공시 정보" },
+];
+const WORKSPACE_ITEMS: MenuProps["items"] = [
+  { key: "soon:ai", label: "AI 분석" },
+  { key: "soon:compare", label: "기업 비교하기" },
+  { key: "soon:portfolio", label: "마이 포트폴리오" },
 ];
 
 export function AppHeader() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { message } = App.useApp();
   const bp = useBreakpoint();
   const isMobile = bp === "mobile";
   const [loginOpen, setLoginOpen] = useState(false);
 
-  const menuItems: MenuProps["items"] = [
-    ...NAV.map((n) => ({ key: n.to, label: n.label })),
-    { type: "divider" as const },
+  // 키 라우팅 공통: soon:* → 준비중 토스트 / login → 모달 / 그 외 → 라우팅
+  function handleKey(key: string) {
+    if (key === "login") setLoginOpen(true);
+    else if (key.startsWith("soon:")) message.info("준비 중입니다");
+    else navigate(key);
+  }
+  const onMenuClick: MenuProps["onClick"] = ({ key }) => handleKey(key);
+
+  const searchActive = pathname.startsWith("/bulk");
+
+  // 모바일: 햄버거 하나에 전체(서브메뉴 포함) 접기
+  const mobileItems: MenuProps["items"] = [
+    { key: "/", label: "홈" },
+    { key: "sub-search", label: "통합 검색", children: SEARCH_ITEMS },
+    { key: "sub-ws", label: "워크스페이스", children: WORKSPACE_ITEMS },
+    { key: "soon:pricing", label: "요금제" },
+    { key: "soon:contact", label: "문의/제보" },
+    { type: "divider" },
     { key: "login", label: "로그인" },
   ];
-  const onMenuClick: MenuProps["onClick"] = ({ key }) => {
-    if (key === "login") setLoginOpen(true);
-    else navigate(key);
-  };
 
   return (
     <header
@@ -37,25 +62,28 @@ export function AppHeader() {
         position: "sticky",
         top: 0,
         zIndex: 100,
-        height: 56,
+        height: 68,
         background: colors.bgSurface,
         borderBottom: `1px solid ${colors.border}`,
         display: "flex",
         alignItems: "center",
-        padding: "0 20px",
-        gap: 24,
+        padding: "0 24px",
+        gap: 28,
       }}
     >
       {/* 로고 */}
       <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
-        <img src="/logos/qesg.svg" alt="QESG" style={{ height: 26, width: "auto", display: "block" }} />
+        <img
+          src="/logos/qesg.svg"
+          alt="QESG"
+          style={{ height: 32, width: "auto", display: "block" }}
+        />
       </Link>
 
       {isMobile ? (
-        /* 모바일: 햄버거로 메뉴+로그인 접기 (겹침 방지) */
         <div style={{ marginLeft: "auto" }}>
           <Dropdown
-            menu={{ items: menuItems, onClick: onMenuClick }}
+            menu={{ items: mobileItems, onClick: onMenuClick }}
             trigger={["click"]}
             placement="bottomRight"
           >
@@ -64,28 +92,43 @@ export function AppHeader() {
         </div>
       ) : (
         <>
-          <nav style={{ display: "flex", gap: 18, alignItems: "center" }}>
-            {NAV.map((item) => {
-              const active = pathname === item.to;
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  style={{
-                    fontSize: 14,
-                    fontWeight: active ? 700 : 500,
-                    color: active ? colors.textBase : colors.textSub,
-                    textDecoration: "none",
-                    borderBottom: active ? `2px solid ${colors.accent}` : "2px solid transparent",
-                    paddingBottom: 2,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+          <nav style={{ display: "flex", gap: 22, alignItems: "center" }}>
+            <NavLink label="홈" to="/" active={pathname === "/"} onClick={() => navigate("/")} />
+
+            <Dropdown
+              menu={{ items: SEARCH_ITEMS, onClick: onMenuClick }}
+              trigger={["click"]}
+              placement="bottomLeft"
+            >
+              <button style={navItemStyle(searchActive)}>
+                DATA <DownOutlined style={{ fontSize: 9 }} />
+              </button>
+            </Dropdown>
+
+            <Dropdown
+              menu={{ items: WORKSPACE_ITEMS, onClick: onMenuClick }}
+              trigger={["click"]}
+              placement="bottomLeft"
+            >
+              <button style={navItemStyle(false)}>
+                워크스페이스 <DownOutlined style={{ fontSize: 9 }} />
+              </button>
+            </Dropdown>
+
+            <NavLink
+              label="요금제"
+              to=""
+              active={false}
+              onClick={() => handleKey("soon:pricing")}
+            />
+            <NavLink
+              label="문의/제보"
+              to=""
+              active={false}
+              onClick={() => handleKey("soon:contact")}
+            />
           </nav>
+
           <div style={{ marginLeft: "auto" }}>
             <Button type="primary" onClick={() => setLoginOpen(true)}>
               로그인
@@ -96,5 +139,38 @@ export function AppHeader() {
 
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </header>
+  );
+}
+
+const navItemStyle = (active: boolean): React.CSSProperties => ({
+  fontSize: 15,
+  fontWeight: active ? 700 : 500,
+  color: active ? colors.textBase : colors.textSub,
+  textDecoration: "none",
+  borderBottom: active ? `2px solid ${colors.accent}` : "2px solid transparent",
+  paddingBottom: 2,
+  whiteSpace: "nowrap",
+  cursor: "pointer",
+  background: "none",
+  border: "none",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+});
+
+function NavLink({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  to: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button onClick={onClick} style={navItemStyle(active)}>
+      {label}
+    </button>
   );
 }

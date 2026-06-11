@@ -15,7 +15,7 @@ const CERTS: { title: string; sub: string; logos: string[] }[] = [
 
 export function Footer() {
   return (
-    <footer style={{ background: colors.bgPage, borderTop: `1px solid ${colors.border}`, marginTop: 24 }}>
+    <footer style={{ background: colors.bgSurface, borderTop: `1px solid ${colors.border}`, marginTop: 24 }}>
       <div style={{ maxWidth: layout.contentMaxWidth, margin: "0 auto", padding: "36px 20px 48px" }}>
         {/* 인증·파트너십 */}
         <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
