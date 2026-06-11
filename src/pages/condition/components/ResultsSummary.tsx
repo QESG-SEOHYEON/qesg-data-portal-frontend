@@ -119,7 +119,7 @@ export function ResultsSummary({
               >
                 {t.label}
                 {t.n !== undefined && (
-                  <span style={{ marginLeft: 6, color: colors.textHint, fontWeight: 600 }}>
+                  <span style={{ marginLeft: 6, color: colors.accent, fontWeight: 700 }}>
                     {t.n}
                   </span>
                 )}
@@ -157,13 +157,20 @@ export function ResultsSummary({
           )}
           {recentDisclosures.length > 0 && (
             <Section title="최근 공시">
-              <div style={{ border: `1px solid ${colors.border}`, borderRadius: 10, overflow: "hidden", background: colors.bgSurface }}>
+              <div
+                style={{
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  background: colors.bgSurface,
+                }}
+              >
                 {recentDisclosures.map((d, i) => (
                   <DisclosureRow key={`${d.stockCode}-${d.docType}`} d={d} first={i === 0} />
                 ))}
               </div>
               <div style={{ marginTop: 8, fontSize: 11.5, color: colors.textHint }}>
-                원문 링크로 직접 확인 (파일 다운로드 미제공)
+                클릭 시 원문 링크 이동
               </div>
             </Section>
           )}
@@ -172,7 +179,7 @@ export function ResultsSummary({
 
       {/* 기업 결과 */}
       {showCompany && counts.company > 0 && (
-        <Section title={`기업 검색 결과 ${counts.company}개`}>
+        <Section title={<>기업 검색 결과 <Count n={counts.company} /></>}>
           <div
             style={{
               display: "grid",
@@ -185,7 +192,9 @@ export function ResultsSummary({
               return (
                 <Card key={c.id} onClick={() => onOpenCompany(c.id)}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <strong style={{ fontSize: 14.5, color: colors.textBase }}>{c.label}</strong>
+                    <strong style={{ fontSize: 14.5, color: colors.textBase }}>
+                      <Highlight text={c.label} q={q} />
+                    </strong>
                     <span
                       style={{
                         fontSize: 12,
@@ -193,7 +202,7 @@ export function ResultsSummary({
                         fontVariantNumeric: "tabular-nums",
                       }}
                     >
-                      {c.id}
+                      <Highlight text={c.id} q={q} />
                     </span>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -211,7 +220,7 @@ export function ResultsSummary({
 
       {/* 지표 결과 */}
       {showIndicator && counts.indicator > 0 && (
-        <Section title={`지표 검색 결과 ${counts.indicator}개`}>
+        <Section title={<>지표 검색 결과 <Count n={counts.indicator} /></>}>
           <div
             style={{
               display: "grid",
@@ -236,7 +245,9 @@ export function ResultsSummary({
                     >
                       {ind.category}
                     </span>
-                    <strong style={{ fontSize: 13.5, color: colors.textBase }}>{ind.label}</strong>
+                    <strong style={{ fontSize: 13.5, color: colors.textBase }}>
+                      <Highlight text={ind.label} q={q} />
+                    </strong>
                   </span>
                   <span style={{ fontSize: 12, color: colors.primary, fontWeight: 600 }}>
                     표에서 비교 →
@@ -250,7 +261,7 @@ export function ResultsSummary({
 
       {/* 뉴스 — 2열 카드 (카테고리·날짜·매체 / 제목 / 본문 발췌+키워드 / 관련 기업 / 카드=원문) */}
       {showNews && news.length > 0 && (
-        <Section title={`ESG 뉴스 ${counts.news}개`}>
+        <Section title={<>ESG 뉴스 <Count n={counts.news} /></>}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {news.map((n) => (
               <NewsCard key={n.id} n={n} query={q} onCompany={openCompanyByName} />
@@ -261,7 +272,7 @@ export function ResultsSummary({
 
       {/* 공시 — 리스트(문서). 문서종류 태그 · 기업 · 문서명+연도 · 등록일, 행=원문 */}
       {showDisc && disclosures.length > 0 && (
-        <Section title={`공시 ${counts.disclosure}개`}>
+        <Section title={<>공시 <Count n={counts.disclosure} /></>}>
           <div
             style={{
               border: `1px solid ${colors.border}`,
@@ -276,7 +287,6 @@ export function ResultsSummary({
           </div>
         </Section>
       )}
-
     </div>
   );
 }
@@ -354,7 +364,51 @@ function DisclosureRow({ d, first }: { d: DisclosureDocRow; first: boolean }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+// 검색 키워드 하이라이트 (기업명·지표명 등) — 뉴스 본문과 동일한 노란 마크
+function hlParts(text: string, q: string): { t: string; hl: boolean }[] {
+  const query = q.trim();
+  if (!query) return [{ t: text, hl: false }];
+  const tryKey = (key: string): { t: string; hl: boolean }[] | null => {
+    const lower = text.toLowerCase();
+    const kl = key.toLowerCase();
+    if (!kl || !lower.includes(kl)) return null;
+    const out: { t: string; hl: boolean }[] = [];
+    let i = 0;
+    for (;;) {
+      const idx = lower.indexOf(kl, i);
+      if (idx === -1) {
+        out.push({ t: text.slice(i), hl: false });
+        break;
+      }
+      if (idx > i) out.push({ t: text.slice(i, idx), hl: false });
+      out.push({ t: text.slice(idx, idx + key.length), hl: true });
+      i = idx + key.length;
+    }
+    return out;
+  };
+  return tryKey(query) ?? tryKey(query.split(/\s+/)[0]) ?? [{ t: text, hl: false }];
+}
+function Highlight({ text, q }: { text: string; q: string }) {
+  return (
+    <>
+      {hlParts(text, q).map((p, i) =>
+        p.hl ? (
+          <mark key={i} style={{ background: "#FFF3C4", color: "inherit", padding: "0 1px", borderRadius: 2 }}>
+            {p.t}
+          </mark>
+        ) : (
+          <span key={i}>{p.t}</span>
+        ),
+      )}
+    </>
+  );
+}
+// 검색 결과 개수 강조(에메랄드) — 숫자+"개" 모두
+function Count({ n }: { n: number }) {
+  return <span style={{ color: colors.accent }}>{n}개</span>;
+}
+
+function Section({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 28 }}>
       <div style={{ fontSize: 16, fontWeight: 700, color: colors.textBase, marginBottom: 12 }}>

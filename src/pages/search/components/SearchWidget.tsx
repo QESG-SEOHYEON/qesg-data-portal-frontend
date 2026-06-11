@@ -12,14 +12,16 @@ import { AutocompleteDropdown } from "./AutocompleteDropdown";
 interface Props {
   /** 검색 영역 최대 폭 (기본 명세값) */
   maxWidth?: number;
+  /** 초기 검색어(키워드 클릭 등으로 진입 시 입력창에 유지) */
+  initialQuery?: string;
   /** 선택 시 추가 동작(칩/외부 연동용). 미지정 시 기본 라우팅만 */
   onSelected?: (item: SearchResultItem) => void;
 }
 
-export function SearchWidget({ maxWidth = layout.searchMaxWidth, onSelected }: Props) {
+export function SearchWidget({ maxWidth = layout.searchMaxWidth, initialQuery = "", onSelected }: Props) {
   const navigate = useNavigate();
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [focused, setFocused] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1); // 키보드 강조 항목
 

@@ -15,6 +15,7 @@ import { getIndicatorColumns } from "@/mock/indicatorSearch";
 import { ResultsSummary } from "./components/ResultsSummary";
 import { ConditionTable } from "./components/ConditionTable";
 import { LoginModal } from "@/pages/landing/components/LoginModal";
+import { PlanModal } from "@/pages/landing/components/PlanModal";
 
 type Mode = "entry" | "summary" | "table";
 
@@ -27,9 +28,13 @@ export function ConditionSearchPage() {
   const q0 = params.get("q") ?? ""; // 홈 검색에서 ?q= 로 넘어온 검색어
   const cat0 = params.get("cat"); // GNB 환경/사회/지배구조 메뉴
   const col0 = params.get("col") ?? undefined; // 지표 선택 → 그 컬럼(지표) 표
+  const company0 = params.get("company") ?? undefined; // 개별기업 "전체 보기" → 그 기업 필터
+  const sector0 = params.get("sector") ?? undefined; // 업종 칩(기업 칩 떼면 동종업계로)
+  const group0 = params.get("group") ?? undefined; // 둘러보기: 소그룹 전체 조회
+  const full0 = params.get("full") === "1"; // 카테고리 전체 지표 표시
   const cat0Valid = cat0 && CAT_SET.has(cat0) ? (cat0 as Category) : undefined;
   const [mode, setMode] = useState<Mode>(
-    cat0Valid || col0 ? "table" : q0 ? "summary" : "entry",
+    cat0Valid || col0 || company0 || group0 ? "table" : q0 ? "summary" : "entry",
   );
   const [query, setQuery] = useState(q0);
   const [plan, setPlan] = useState<ViewerPlan>("member");
@@ -37,10 +42,15 @@ export function ConditionSearchPage() {
   // 표 진입 컨텍스트
   const [tableColumnId, setTableColumnId] = useState<string | undefined>(col0);
   const [tableCategory, setTableCategory] = useState<Category | undefined>(cat0Valid);
-  const [companyIds, setCompanyIds] = useState<string[] | undefined>();
+  const [companyIds, setCompanyIds] = useState<string[] | undefined>(
+    company0 ? [company0] : undefined,
+  );
 
   // 모달
   const [loginOpen, setLoginOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  // 잠금 접근: 비회원 → 로그인 / 가입했으나 미구매(개인) → 플랜 가입
+  const requireUpgrade = () => (plan === "guest" ? setLoginOpen(true) : setPlanOpen(true));
 
   // URL 쿼리(GNB·홈검색·지표선택)가 바뀌면 동기화 — 같은 라우트라 remount가 없으므로 effect로 반영
   const searchKey = params.toString();
@@ -48,7 +58,21 @@ export function ConditionSearchPage() {
     const cat = params.get("cat");
     const col = params.get("col");
     const q = params.get("q");
-    if (cat && CAT_SET.has(cat)) {
+    const company = params.get("company");
+    const group = params.get("group");
+    if (company) {
+      // 개별기업 "전체 보기" → 그 기업 필터 + 카테고리(있으면)
+      setCompanyIds([company]);
+      setTableCategory(cat && CAT_SET.has(cat) ? (cat as Category) : undefined);
+      setTableColumnId(undefined);
+      setMode("table");
+    } else if (group) {
+      // 둘러보기: 소그룹 전체 조회
+      setTableCategory(undefined);
+      setTableColumnId(undefined);
+      setCompanyIds(undefined);
+      setMode("table");
+    } else if (cat && CAT_SET.has(cat)) {
       setTableCategory(cat as Category);
       setTableColumnId(undefined);
       setCompanyIds(undefined);
@@ -132,7 +156,7 @@ export function ConditionSearchPage() {
           <SearchEntry onKeyword={(term) => runText(term)} />
         ) : (
           <>
-            <SearchWidget maxWidth={9999} />
+            <SearchWidget maxWidth={9999} initialQuery={query} />
             <div style={{ fontSize: 12.5, color: colors.textHint, margin: "8px 2px 0" }}>
               {tableCategory
                 ? `${categoryColors[tableCategory].name} 지표`
@@ -164,13 +188,20 @@ export function ConditionSearchPage() {
               )}
               {mode === "table" && (
                 <ConditionTable
-                  key={tableCategory ?? "all"}
+                  key={`${tableCategory ?? "all"}:${tableColumnId ?? ""}:${sector0 ?? ""}:${group0 ?? ""}`}
                   plan={plan}
                   initialColumnId={tableColumnId}
                   initialCategory={tableCategory}
+                  initialGroupCode={group0}
+                  initialSectors={sector0 ? [sector0] : undefined}
+                  fullCategory={full0}
                   companyIds={companyIds}
                   onCompanyOpen={(id) => navigate(`/company/${id}`)}
-                  onUpgrade={() => setLoginOpen(true)}
+                  onIndicatorOpen={(id, cat, label) =>
+                    navigate(`/company/${id}?cat=${cat}&ind=${encodeURIComponent(label)}`)
+                  }
+                  onSanctionOpen={(id) => navigate(`/company/${id}#sanctions`)}
+                  onUpgrade={requireUpgrade}
                   onSetCompanyIds={setCompanyIds}
                 />
               )}
@@ -187,6 +218,7 @@ export function ConditionSearchPage() {
       </div>
 
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <PlanModal open={planOpen} onClose={() => setPlanOpen(false)} />
     </main>
   );
 }
