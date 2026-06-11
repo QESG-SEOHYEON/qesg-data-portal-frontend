@@ -1,10 +1,11 @@
 // ⭐ 통합 검색 데이터 경계 (GET /api/indicator-search 대체 예정)
-// 지표 단일 소스 = i_indicator_master(CATALOG_RAW, 119). 컬럼·검색 자동완성·바로가기를 모두 여기서 파생 → id 1:1.
-// (여러 컬럼인 지표는 i_indicator_sub로 컬럼 그룹 확장 예정 — 목업은 master 1지표=1컬럼.)
-// ⚠️ 출처는 화면에서 끔(데이터만 유지). DB 직접 연결 X(목업).
+// 지표 분류 확정본(indicatorGrouping, qesg-indicator-grouping-v3) 기준.
+//  - 노출(expose)만 UI(필터·표·검색)에 표시 / 별도노출(separate)은 데이터 유지·화면 숨김 / 제외(exclude)는 제거
+//  - 소그룹(대분류>소그룹>지표>sub) 구조, 대표지표(★)=탭 기본세트
+// ⚠️ 출처·표준매핑(GRI)은 화면에서 끔. 종합점수·등급 컬럼 없음(안전선). DB 직접 연결 X(목업).
 import type { Category, IndicatorItem, SourceCode } from "@/types";
-import { CATALOG_RAW } from "./catalogData";
-import type { CatalogRaw } from "./catalogData";
+import { GROUPED_INDICATORS, STAR_CODES } from "./indicatorGrouping";
+import type { GroupedIndicator, IndKind } from "./indicatorGrouping";
 import { BULK_COMPANIES } from "./bulkData";
 
 export type CellType = "numeric" | "boolean" | "text";
@@ -18,13 +19,17 @@ export interface SubDef {
 }
 
 export interface IndicatorColumn {
-  id: string; // = indicator_code (master)
+  id: string; // = indicator_code
   label: string; // = indicator_name
   unit?: string;
   category: Category;
-  type: CellType; // = value_type(measure) 기반
+  type: CellType;
   source: SourceCode; // 데이터 유지용(화면 비노출)
-  subs?: SubDef[]; // 있으면 sub별 컬럼으로 펼침(지표명 그룹 헤더)
+  subs?: SubDef[]; // 있으면 sub별 컬럼으로 펼침
+  groupCode: string; // 소그룹 코드 (E-1 …)
+  groupName: string; // 소그룹명 (한글)
+  star: boolean; // 대표지표(탭 기본세트)
+  kind: IndKind; // expose / separate
 }
 
 export interface Cell {
@@ -39,17 +44,11 @@ export interface IndicatorRow {
   cells: Record<string, Cell>;
 }
 
-// measure(value_type) → 셀 렌더 타입
-function measureToType(m: string): CellType {
-  if (m === "yn") return "boolean";
-  if (m === "detail") return "text";
-  return "numeric"; // num | percent
-}
 // 출처(데이터 유지용, 화면 비노출) — 결정적 배정
-function sourceOf(c: CatalogRaw): SourceCode {
-  if (c.measure === "yn" || c.measure === "detail") return "DART";
-  if (c.category === "E") return "ENV";
-  if (c.category === "S") return "NGMS";
+function sourceOf(g: GroupedIndicator): SourceCode {
+  if (g.type === "boolean" || g.type === "text") return "DART";
+  if (g.category === "E") return "ENV";
+  if (g.category === "S") return "NGMS";
   return "DART";
 }
 
@@ -79,22 +78,30 @@ const SUBS: Record<string, SubDef[]> = {
   ],
 };
 
-// master 119 → 컬럼 (sub 있으면 부착)
-const COLUMNS: IndicatorColumn[] = CATALOG_RAW.map((c) => ({
-  id: c.code,
-  label: c.name,
-  unit: c.unit || undefined,
-  category: c.category,
-  type: measureToType(c.measure),
-  source: sourceOf(c),
-  subs: SUBS[c.code],
-}));
+// 분류본 → 컬럼. 제외(exclude) 제거. 별도노출(separate)은 데이터 유지용으로 ALL에는 포함, UI엔 미노출.
+const ALL_COLUMNS: IndicatorColumn[] = GROUPED_INDICATORS.filter((g) => g.kind !== "exclude").map(
+  (g) => ({
+    id: g.code,
+    label: g.name,
+    unit: g.unit || undefined,
+    category: g.category,
+    type: g.type,
+    source: sourceOf(g),
+    subs: SUBS[g.code],
+    groupCode: g.groupCode,
+    groupName: g.groupName,
+    star: g.star,
+    kind: g.kind,
+  }),
+);
+// UI 노출 컬럼 = 노출(expose)만
+const COLUMNS: IndicatorColumn[] = ALL_COLUMNS.filter((c) => c.kind === "expose");
 
 export function getIndicatorColumns(): IndicatorColumn[] {
   return COLUMNS;
 }
 
-// 검색 자동완성용 지표 목록 (컬럼과 동일 id) — 검색·표·바로가기가 한 소스
+// 검색 자동완성용 지표 목록 (노출만, 컬럼과 동일 id)
 export function getIndicatorSuggestions(): IndicatorItem[] {
   return COLUMNS.map((c) => ({
     type: "indicator",
@@ -106,11 +113,8 @@ export function getIndicatorSuggestions(): IndicatorItem[] {
   }));
 }
 
-// 기본 노출 컬럼 — 카테고리별 앞쪽 몇 개 (대량 진입 시 압도 방지)
-function firstOf(cat: Category, n: number): string[] {
-  return COLUMNS.filter((c) => c.category === cat).slice(0, n).map((c) => c.id);
-}
-export const DEFAULT_COLUMN_IDS = [...firstOf("E", 2), ...firstOf("S", 2), ...firstOf("G", 1)];
+// 기본 노출 컬럼 = 탭 기본세트 대표지표(★)
+export const DEFAULT_COLUMN_IDS = [...STAR_CODES];
 
 // 회계연도 (조회 가능 연도) — 기본 조회는 가장 최신 연도(공시 시차 반영, 2026 기준 FY2025)
 export const SEARCH_YEARS = [2022, 2023, 2024, 2025];
@@ -164,7 +168,8 @@ export function getIndicatorRows(filter: RowFilter = {}): IndicatorRow[] {
   }
   return companies.map((c) => {
     const cells: Record<string, Cell> = {};
-    for (const col of COLUMNS) {
+    // 별도노출 데이터도 유지하기 위해 ALL_COLUMNS 기준으로 생성
+    for (const col of ALL_COLUMNS) {
       const subs = col.subs && col.subs.length ? col.subs : [null];
       for (const sub of subs)
         for (const y of years) cells[cellKey(col.id, y, sub?.code)] = genCell(c.id, col, y, sub?.code);

@@ -2,10 +2,11 @@
 // "+ 지표 추가" 컬럼 클릭도 이 모달의 표시 지표 섹션을 열어 연동(추가 경로 일원화).
 import { useEffect, useRef, useState } from "react";
 import { Modal, Checkbox, Input } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
+import { SearchOutlined, CaretRightOutlined, CaretDownOutlined } from "@ant-design/icons";
 import type { Category } from "@/types";
 import type { IndicatorColumn } from "@/mock/indicatorSearch";
 import { SEARCH_YEARS, SEARCH_LATEST_YEAR } from "@/mock/indicatorSearch";
+import { SUBGROUPS } from "@/mock/indicatorGrouping";
 import { colors, categoryColors } from "@/theme/tokens";
 import { DataNotFoundCta } from "@/components/DataNotFoundCta";
 
@@ -52,6 +53,7 @@ export function ConditionFilterModal({
   // 표시 지표 패널: 미니 카테고리 + 지표 검색
   const [colCat, setColCat] = useState<Category | "all">("all");
   const [colQuery, setColQuery] = useState("");
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -70,6 +72,11 @@ export function ConditionFilterModal({
       setBizText(ids.filter((c) => c.length === 10).join("\n"));
       setColCat("all");
       setColQuery("");
+      // 선택된 지표가 있는 소그룹은 펼친 채로 시작
+      const selGroups = new Set(
+        allCols.filter((c) => value.visibleIds.includes(c.id)).map((c) => c.groupCode),
+      );
+      setOpenGroups(selGroups);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -158,50 +165,83 @@ export function ConditionFilterModal({
                     onChange={(e) => setColQuery(e.target.value)}
                     style={{ width: "100%", marginBottom: 12 }}
                   />
-                  <div ref={listRef} style={{ maxHeight: 260, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div ref={listRef} style={{ maxHeight: 300, overflowY: "auto", display: "flex", flexDirection: "column", gap: 18 }}>
                     {(colCat === "all" ? CATS : [colCat]).map((cat) => {
                       const q = colQuery.trim();
-                      const shown = allCols.filter((c) => c.category === cat && (q === "" || c.label.includes(q)));
-                      if (shown.length === 0) return null;
-                      const ids = shown.map((c) => c.id);
-                      const selected = ids.filter((id) => visibleIds.includes(id));
-                      const allOn = selected.length === ids.length;
-                      const some = selected.length > 0 && !allOn;
+                      const catSubgroups = SUBGROUPS.filter((sg) => sg.category === cat);
+                      const catHasAny = catSubgroups.some((sg) =>
+                        allCols.some((c) => c.groupCode === sg.code && (q === "" || c.label.includes(q))),
+                      );
+                      if (!catHasAny) return null;
                       return (
                         <div key={cat}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                            <span style={{ fontSize: 12.5, fontWeight: 700, color: categoryColors[cat].fg }}>
-                              {categoryColors[cat].name}
-                              <span style={{ color: colors.textHint, fontWeight: 400, marginLeft: 4 }}>{shown.length}</span>
-                            </span>
-                            <Checkbox
-                              checked={allOn}
-                              indeterminate={some}
-                              onChange={(e) =>
-                                setVisibleIds((prev) =>
-                                  e.target.checked
-                                    ? Array.from(new Set([...prev, ...ids]))
-                                    : prev.filter((id) => !ids.includes(id)),
-                                )
-                              }
-                            >
-                              <span style={{ fontSize: 12.5, color: colors.textSub }}>전체</span>
-                            </Checkbox>
+                          {/* 카테고리 헤더 */}
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: categoryColors[cat].fg, marginBottom: 8 }}>
+                            {categoryColors[cat].name}
                           </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px" }}>
-                            {shown.map((c) => (
-                              <Checkbox
-                                key={c.id}
-                                checked={visibleIds.includes(c.id)}
-                                onChange={(e) =>
-                                  setVisibleIds((prev) =>
-                                    e.target.checked ? [...prev, c.id] : prev.filter((x) => x !== c.id),
-                                  )
-                                }
-                              >
-                                <span style={{ fontSize: 13 }}>{c.label}</span>
-                              </Checkbox>
-                            ))}
+                          {/* 소그룹 접이식 */}
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            {catSubgroups.map((sg) => {
+                              const inds = allCols.filter(
+                                (c) => c.groupCode === sg.code && (q === "" || c.label.includes(q)),
+                              );
+                              if (inds.length === 0) return null;
+                              const ids = inds.map((c) => c.id);
+                              const selected = ids.filter((id) => visibleIds.includes(id));
+                              const allOn = selected.length === ids.length;
+                              const some = selected.length > 0 && !allOn;
+                              const open = q !== "" || openGroups.has(sg.code);
+                              return (
+                                <div key={sg.code} style={{ border: `1px solid ${colors.border}`, borderRadius: 8, overflow: "hidden" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: colors.bgPage }}>
+                                    <button
+                                      onClick={() =>
+                                        setOpenGroups((prev) => {
+                                          const n = new Set(prev);
+                                          n.has(sg.code) ? n.delete(sg.code) : n.add(sg.code);
+                                          return n;
+                                        })
+                                      }
+                                      style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", cursor: "pointer", textAlign: "left", padding: 0 }}
+                                    >
+                                      {open ? <CaretDownOutlined style={{ fontSize: 10, color: colors.textHint }} /> : <CaretRightOutlined style={{ fontSize: 10, color: colors.textHint }} />}
+                                      <span style={{ fontSize: 13, fontWeight: 600, color: colors.textBase }}>{sg.name}</span>
+                                      <span style={{ fontSize: 11.5, color: colors.textHint }}>{inds.length}</span>
+                                    </button>
+                                    <Checkbox
+                                      checked={allOn}
+                                      indeterminate={some}
+                                      onChange={(e) =>
+                                        setVisibleIds((prev) =>
+                                          e.target.checked
+                                            ? Array.from(new Set([...prev, ...ids]))
+                                            : prev.filter((id) => !ids.includes(id)),
+                                        )
+                                      }
+                                    >
+                                      <span style={{ fontSize: 12, color: colors.textSub }}>전체</span>
+                                    </Checkbox>
+                                  </div>
+                                  {open && (
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px", padding: "8px 12px" }}>
+                                      {inds.map((c) => (
+                                        <Checkbox
+                                          key={c.id}
+                                          checked={visibleIds.includes(c.id)}
+                                          onChange={(e) =>
+                                            setVisibleIds((prev) =>
+                                              e.target.checked ? [...prev, c.id] : prev.filter((x) => x !== c.id),
+                                            )
+                                          }
+                                        >
+                                          <span style={{ fontSize: 13 }}>{c.label}</span>
+                                        </Checkbox>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       );

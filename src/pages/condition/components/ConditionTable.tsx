@@ -8,6 +8,7 @@ import {
   FilterOutlined,
   CaretUpOutlined,
   CaretDownOutlined,
+  CaretRightOutlined,
 } from "@ant-design/icons";
 import type { Category, ViewerPlan } from "@/types";
 import {
@@ -20,6 +21,7 @@ import {
 } from "@/mock/indicatorSearch";
 import type { IndicatorRow, SubDef } from "@/mock/indicatorSearch";
 import { CloseOutlined } from "@ant-design/icons";
+import { SUBGROUPS } from "@/mock/indicatorGrouping";
 import { colors, categoryColors } from "@/theme/tokens";
 import { CellContent } from "./CellContent";
 import { ConditionFilterModal } from "./ConditionFilterModal";
@@ -68,12 +70,10 @@ export function ConditionTable({
   const [visibleIds, setVisibleIds] = useState<string[]>(() => {
     // 지표 진입(지표 클릭/검색): 그 지표 1개 컬럼만 ("지표 페이지")
     if (initialColumnId && allCols.some((c) => c.id === initialColumnId)) return [initialColumnId];
-    // 카테고리 진입(환경/사회/지배구조 메뉴): 해당 분류 앞쪽 8개 (지표가 많아 일부만)
+    // 카테고리 진입(환경/사회/지배구조): 해당 분류의 탭 기본세트(★)
     if (initialCategory)
-      return allCols
-        .filter((c) => c.category === initialCategory)
-        .slice(0, 8)
-        .map((c) => c.id);
+      return allCols.filter((c) => c.category === initialCategory && c.star).map((c) => c.id);
+    // 그 외: 전체 탭 기본세트(★)
     return [...DEFAULT_COLUMN_IDS];
   });
   const [sort, setSort] = useState<{
@@ -83,6 +83,13 @@ export function ConditionTable({
     dir: "asc" | "desc";
   } | null>(null);
   const [page, setPage] = useState(0);
+  const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
+  const toggleSubs = (colId: string) =>
+    setExpandedSubs((prev) => {
+      const n = new Set(prev);
+      n.has(colId) ? n.delete(colId) : n.add(colId);
+      return n;
+    });
 
   const canExport = plan === "enterprise";
   const multiYear = years.length > 1;
@@ -93,23 +100,36 @@ export function ConditionTable({
     () => allCols.filter((c) => visibleIds.includes(c.id)),
     [allCols, visibleIds],
   );
-  // 실제 표 열 = 지표 × sub × 연도 (sub 없으면 1, 다년도면 연도별)
+
+  // sub 접기: total 보유 지표는 기본 합계(total)만, 펼치면 전체 sub
+  const hasTotal = (col: (typeof cols)[number]) => !!col.subs?.some((s) => s.code === "total");
+  const subsOf = (col: (typeof cols)[number]): (SubDef | null)[] => {
+    if (!col.subs || !col.subs.length) return [null];
+    if (hasTotal(col) && !expandedSubs.has(col.id)) {
+      return [col.subs.find((s) => s.code === "total") ?? col.subs[0]];
+    }
+    return col.subs;
+  };
+
+  // 3단 헤더 구조: 소그룹 > 지표 > sub/연도
+  const headerGroups = useMemo(() => {
+    const order = SUBGROUPS.filter((sg) => cols.some((c) => c.groupCode === sg.code));
+    return order.map((sg) => {
+      const inds = cols
+        .filter((c) => c.groupCode === sg.code)
+        .map((col) => {
+          const items = subsOf(col).flatMap((sub) => sortedYears.map((year) => ({ col, sub, year })));
+          return { col, span: items.length, items };
+        });
+      return { sg, inds, span: inds.reduce((a, b) => a + b.span, 0) };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cols, sortedYears, expandedSubs]);
+
+  // 실제 표 열(본문) = 소그룹>지표>sub/연도 평탄화
   const viewCols = useMemo(
-    () =>
-      cols.flatMap((col) => {
-        const subs: (SubDef | null)[] = col.subs && col.subs.length ? col.subs : [null];
-        return subs.flatMap((sub) => sortedYears.map((y) => ({ col, sub, year: y })));
-      }),
-    [cols, sortedYears],
-  );
-  // 상단 그룹 헤더 = 지표(여러 sub·연도 span)
-  const groups = useMemo(
-    () =>
-      cols.map((col) => {
-        const subCount = col.subs && col.subs.length ? col.subs.length : 1;
-        return { col, span: subCount * sortedYears.length };
-      }),
-    [cols, sortedYears],
+    () => headerGroups.flatMap((g) => g.inds.flatMap((i) => i.items)),
+    [headerGroups],
   );
 
   const rows = useMemo(
@@ -237,10 +257,10 @@ export function ConditionTable({
             }}
           >
             <thead>
-              {/* 1행: 기업 / 지표 그룹 헤더 / + 지표 추가 */}
+              {/* 1행: 기업 / 소그룹 / + 지표 추가 */}
               <tr>
                 <th
-                  rowSpan={2}
+                  rowSpan={3}
                   style={{
                     position: "sticky",
                     left: 0,
@@ -257,49 +277,38 @@ export function ConditionTable({
                 >
                   기업
                 </th>
-                {groups.map(({ col, span }) => (
+                {headerGroups.map(({ sg, span }) => (
                   <th
-                    key={col.id}
+                    key={sg.code}
                     colSpan={span}
                     style={{
                       textAlign: "center",
-                      padding: "8px 12px",
-                      fontSize: 12,
+                      padding: "7px 12px",
+                      fontSize: 11.5,
                       fontWeight: 700,
-                      color: colors.textBase,
+                      color: colors.textSub,
                       background: colors.bgPage,
                       borderBottom: `1px solid ${colors.border}`,
                       borderLeft: `1px solid ${colors.border}`,
-                      whiteSpace: "normal",
-                      wordBreak: "keep-all",
-                      verticalAlign: "top",
+                      whiteSpace: "nowrap",
                     }}
                   >
-                    <span style={{ display: "inline-flex", alignItems: "flex-start", gap: 4, justifyContent: "center", flexWrap: "wrap" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, justifyContent: "center" }}>
                       <span
                         style={{
                           width: 6,
                           height: 6,
                           borderRadius: "50%",
-                          marginTop: 5,
-                          background: categoryColors[col.category].fg,
+                          background: categoryColors[sg.category].fg,
                           display: "inline-block",
-                          flexShrink: 0,
                         }}
                       />
-                      {col.label}
-                      {col.unit ? (
-                        <span style={{ color: colors.textHint, fontWeight: 400 }}> ({col.unit})</span>
-                      ) : null}
-                      <CloseOutlined
-                        onClick={() => removeColumn(col.id)}
-                        style={{ fontSize: 10, color: colors.textHint, cursor: "pointer", marginTop: 4 }}
-                      />
+                      {sg.name}
                     </span>
                   </th>
                 ))}
                 <th
-                  rowSpan={2}
+                  rowSpan={3}
                   style={{
                     position: "sticky",
                     right: 0,
@@ -321,7 +330,52 @@ export function ConditionTable({
                   />
                 </th>
               </tr>
-              {/* 2행: sub / 연도 디테일 헤더 */}
+              {/* 2행: 지표 (접기 토글 · × 제거) */}
+              <tr>
+                {headerGroups.flatMap((g) =>
+                  g.inds.map(({ col, span }) => (
+                    <th
+                      key={col.id}
+                      colSpan={span}
+                      style={{
+                        textAlign: "center",
+                        padding: "8px 12px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: colors.textBase,
+                        background: colors.bgPage,
+                        borderBottom: `1px solid ${colors.border}`,
+                        borderLeft: `1px solid ${colors.border}`,
+                        whiteSpace: "normal",
+                        wordBreak: "keep-all",
+                        verticalAlign: "top",
+                        maxWidth: 260,
+                      }}
+                    >
+                      <span style={{ display: "inline-flex", alignItems: "flex-start", gap: 4, justifyContent: "center", flexWrap: "wrap" }}>
+                        {hasTotal(col) && (
+                          <span
+                            onClick={() => toggleSubs(col.id)}
+                            style={{ cursor: "pointer", color: colors.textHint, marginTop: 2 }}
+                            title={expandedSubs.has(col.id) ? "Scope 접기" : "Scope 펼치기"}
+                          >
+                            {expandedSubs.has(col.id) ? <CaretDownOutlined style={{ fontSize: 10 }} /> : <CaretRightOutlined style={{ fontSize: 10 }} />}
+                          </span>
+                        )}
+                        {col.label}
+                        {col.unit ? (
+                          <span style={{ color: colors.textHint, fontWeight: 400 }}> ({col.unit})</span>
+                        ) : null}
+                        <CloseOutlined
+                          onClick={() => removeColumn(col.id)}
+                          style={{ fontSize: 10, color: colors.textHint, cursor: "pointer", marginTop: 4 }}
+                        />
+                      </span>
+                    </th>
+                  )),
+                )}
+              </tr>
+              {/* 3행: sub / 연도 디테일 헤더 */}
               <tr>
                 {viewCols.map(({ col, sub, year }) => {
                   const subCode = sub?.code ?? null;
