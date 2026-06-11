@@ -14,34 +14,25 @@ const rowBaseStyle: React.CSSProperties = {
   borderRadius: 8,
 };
 
-function useHoverStyle() {
-  // hover 배경 강조(명세 5.4) — 인라인 이벤트로 처리
-  return {
-    onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
-      e.currentTarget.style.background = colors.rowHover;
-    },
-    onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
-      e.currentTarget.style.background = "transparent";
-    },
-  };
-}
-
 export function CompanyResultRow({
   item,
   query,
   onSelect,
+  active = false,
 }: {
   item: CompanyItem;
   query: string;
   onSelect: (item: CompanyItem) => void;
+  active?: boolean;
 }) {
-  const hover = useHoverStyle();
   return (
     <div
       role="option"
-      style={rowBaseStyle}
+      aria-selected={active}
+      style={{ ...rowBaseStyle, background: active ? colors.rowHover : "transparent" }}
       onClick={() => onSelect(item)}
-      {...hover}
+      onMouseEnter={(e) => (e.currentTarget.style.background = colors.rowHover)}
+      onMouseLeave={(e) => (e.currentTarget.style.background = active ? colors.rowHover : "transparent")}
     >
       <span style={{ fontSize: 14, color: colors.textBase, flex: 1 }}>
         <HighlightText text={item.label} query={query} />
@@ -58,19 +49,22 @@ export function IndicatorResultRow({
   item,
   query,
   onSelect,
+  active = false,
 }: {
   item: IndicatorItem;
   query: string;
   onSelect: (item: IndicatorItem) => void;
+  active?: boolean;
 }) {
-  const hover = useHoverStyle();
   const cat = categoryColors[item.category];
   return (
     <div
       role="option"
-      style={rowBaseStyle}
+      aria-selected={active}
+      style={{ ...rowBaseStyle, background: active ? colors.rowHover : "transparent" }}
       onClick={() => onSelect(item)}
-      {...hover}
+      onMouseEnter={(e) => (e.currentTarget.style.background = colors.rowHover)}
+      onMouseLeave={(e) => (e.currentTarget.style.background = active ? colors.rowHover : "transparent")}
     >
       <CategoryBadge category={item.category} />
       <span style={{ fontSize: 14, color: colors.textBase, flex: 1 }}>

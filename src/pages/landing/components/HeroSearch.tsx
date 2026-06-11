@@ -1,20 +1,17 @@
 // HeroSearch (랜딩 명세 2.1) — 가치 제안 + 통합 검색 바 + 바로가기 칩
-import type { IndicatorItem } from "@/types";
-import { INDICATORS } from "@/mock/indicators";
+// 바로가기 = 카테고리별 공시 커버리지 최고 지표(중립 기준, getQuickIndicators)
+import { useNavigate } from "react-router";
+import { getQuickIndicators } from "@/mock/landing";
 import { colors, layout } from "@/theme/tokens";
 import { SearchWidget } from "@/pages/search/components/SearchWidget";
 import { CategoryBadge } from "@/pages/search/components/CategoryBadge";
 
-// 바로가기 인기 지표 (명세: 온실가스 / 전자투표제 / 여성 임직원 비율)
-const QUICK_IDS = ["E1", "G1", "S2"];
-const QUICK = QUICK_IDS.map((id) => INDICATORS.find((i) => i.id === id)).filter(
-  (i): i is IndicatorItem => !!i,
-);
+const QUICK = getQuickIndicators();
 
 export function HeroSearch() {
-  function handleQuick(item: IndicatorItem) {
-    // eslint-disable-next-line no-console
-    console.log("quick indicator:", item); // TODO: 지표 조회로 라우팅 (후속)
+  const navigate = useNavigate();
+  function handleQuick(code: string) {
+    navigate(`/bulk?col=${encodeURIComponent(code)}`);
   }
 
   return (
@@ -61,8 +58,8 @@ export function HeroSearch() {
           </span>
           {QUICK.map((ind) => (
             <button
-              key={ind.id}
-              onClick={() => handleQuick(ind)}
+              key={ind.category}
+              onClick={() => handleQuick(ind.code)}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
