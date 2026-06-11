@@ -3,7 +3,7 @@
 // 잠금은 플랜 셀렉터(access.ts tier). 평가·등급·전망 없음.
 // ⚠️ 출처(데이터 소스) 표시는 사내 정책 확정 전까지 화면에서 끔 — 데이터/TrustBlock 컴포넌트는 유지, 렌더만 생략.
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useLocation, useSearchParams, useNavigate } from "react-router";
 import { Segmented, Button, Empty } from "antd";
 import { HeartOutlined } from "@ant-design/icons";
 import type { Category, ViewerPlan } from "@/types";
@@ -15,6 +15,7 @@ import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { RightRail } from "@/components/RightRail";
 import { LoginModal } from "@/pages/landing/components/LoginModal";
 import { EsgIndicatorTable } from "./components/EsgIndicatorTable";
+import { SanctionSection } from "./components/SanctionSection";
 import { AskAboutCompany } from "./components/AskAboutCompany";
 import { DisclosureSources } from "./components/DisclosureSources";
 import { SimilarCompanies } from "./components/SimilarCompanies";
@@ -24,9 +25,15 @@ const PLANS: ViewerPlan[] = ["guest", "member", "enterprise"];
 
 export function CompanyDetailPage() {
   const { companyId = "" } = useParams();
+  const navigate = useNavigate();
+  const { hash } = useLocation();
+  const [sp] = useSearchParams();
+  const focusCat = sp.get("cat"); // 그리드 셀 클릭 → 카테고리 포커싱
+  const focusInd = sp.get("ind") ?? undefined; // 클릭한 지표 라벨(근사 매칭)
   const bp = useBreakpoint();
   const [plan, setPlan] = useState<ViewerPlan>("member");
   const [tab, setTab] = useState<Category>("E");
+  const [focusActive, setFocusActive] = useState(true); // 진입 시 포커싱 1회, 수동 탭 전환 시 해제
   const [loginOpen, setLoginOpen] = useState(false);
 
   const detail = useMemo(() => getCompanyDetail(companyId, plan), [companyId, plan]);
@@ -35,6 +42,20 @@ export function CompanyDetailPage() {
   useEffect(() => {
     if (detail) pushRecentView({ id: detail.id, name: detail.name });
   }, [detail?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 그리드 셀 클릭 진입(?cat=) 시 해당 카테고리 탭으로 전환
+  useEffect(() => {
+    if (focusCat && CATEGORIES.includes(focusCat as Category)) setTab(focusCat as Category);
+  }, [focusCat]);
+
+  // #sanctions 해시로 진입 시 제재 섹션으로 스크롤
+  useEffect(() => {
+    if (hash !== "#sanctions") return;
+    const t = setTimeout(() => {
+      document.getElementById("sanctions")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 200);
+    return () => clearTimeout(t);
+  }, [hash, detail?.id]);
 
   if (!detail) {
     return (
@@ -134,7 +155,10 @@ export function CompanyDetailPage() {
           return (
             <button
               key={c}
-              onClick={() => setTab(c)}
+              onClick={() => {
+                setTab(c);
+                setFocusActive(false); // 수동 전환 → 포커싱 초기화
+              }}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -179,12 +203,22 @@ export function CompanyDetailPage() {
         <EsgIndicatorTable
           rows={detail.indicators[tab]}
           trend={detail.trend}
-          onCompare={(l) => console.log("indicator compare →", l)}
+          focusCode={focusActive && focusCat === tab ? focusInd : undefined}
+          onSeeAll={() =>
+            plan === "guest"
+              ? setLoginOpen(true)
+              : navigate(
+                  `/bulk?cat=${tab}&company=${detail.id}&sector=${encodeURIComponent(detail.industry)}&full=1`,
+                )
+          }
         />
       </div>
       <div style={{ marginTop: 10, fontSize: 11.5, color: colors.textHint }}>
         공시 연도는 {detail.baseYear}년 기준입니다.
       </div>
+
+      {/* ── 법규위반·제재 내역 ── */}
+      <SanctionSection companyId={detail.id} />
 
       {/* ── AI 질의 ── */}
       <AskAboutCompany detail={detail} />

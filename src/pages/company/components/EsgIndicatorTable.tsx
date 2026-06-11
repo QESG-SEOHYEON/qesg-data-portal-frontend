@@ -1,10 +1,12 @@
 // ESG 다타입 지표 테이블 — 수치/도입/서술이 한 테이블에 섞임(타입 소제목 없음).
 // 셀 모양만 타입별 분기. 수치형 클릭 시 다개년 추이 아코디언 펼침. 잠금 행 blur(출처뱃지 유지).
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LockOutlined, LinkOutlined, CaretRightOutlined, CaretDownOutlined } from "@ant-design/icons";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import type { CompanyDetail, DetailIndicator } from "@/mock/companyDetail";
 import { colors } from "@/theme/tokens";
+
+const PAGE = 8; // 탭당 기본 노출 수
 
 function numText(ind: DetailIndicator): string {
   if (ind.value === null) return "미공개";
@@ -12,18 +14,15 @@ function numText(ind: DetailIndicator): string {
   return ind.unit === "%" ? `${n}%` : ind.unit ? `${n} ${ind.unit}` : n;
 }
 
-function ValueCell({ ind, expandable, expanded }: { ind: DetailIndicator; expandable: boolean; expanded: boolean }) {
+function ValueCell({ ind }: { ind: DetailIndicator }) {
   if (ind.locked) {
     return <span style={{ filter: "blur(5px)", userSelect: "none", color: colors.textBase, fontWeight: 600 }}>000,000</span>;
   }
   if (ind.type === "numeric") {
     const undisclosed = ind.value === null;
     return (
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-        <span style={{ fontSize: 13.5, fontWeight: undisclosed ? 400 : 600, color: undisclosed ? colors.textHint : colors.textBase, fontVariantNumeric: "tabular-nums" }}>
-          {numText(ind)}
-        </span>
-        {expandable && (expanded ? <CaretDownOutlined style={{ fontSize: 10, color: colors.textHint }} /> : <CaretRightOutlined style={{ fontSize: 10, color: colors.textHint }} />)}
+      <span style={{ fontSize: 13.5, fontWeight: undisclosed ? 400 : 600, color: undisclosed ? colors.textHint : colors.textBase, fontVariantNumeric: "tabular-nums" }}>
+        {numText(ind)}
       </span>
     );
   }
@@ -49,13 +48,56 @@ function ValueCell({ ind, expandable, expanded }: { ind: DetailIndicator; expand
 export function EsgIndicatorTable({
   rows,
   trend,
-  onCompare,
+  focusCode,
+  onSeeAll,
 }: {
   rows: DetailIndicator[];
   trend: CompanyDetail["trend"];
-  onCompare?: (label: string) => void;
+  focusCode?: string;
+  onSeeAll?: () => void; // 전체 보기 → 데이터 조회(통합)로 이동
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [highlight, setHighlight] = useState<string | null>(null);
+  const focusRef = useRef<HTMLTableRowElement>(null);
+
+  // 탭 전환(rows 변경) 시 펼침/하이라이트 초기화 (포커싱 진입은 아래 effect가 재적용)
+  useEffect(() => {
+    setExpanded(null);
+    setHighlight(null);
+  }, [rows]);
+
+  // 그리드 셀 클릭 코드 → 동일 분류 코드로 정확 매칭
+  const matchCode = useMemo(
+    () => (focusCode && rows.some((r) => r.code === focusCode) ? focusCode : null),
+    [focusCode, rows],
+  );
+
+  // 탭당 8개만 노출. 포커싱된 지표가 8개 밖이면 맨 앞에 끌어와 항상 보이게(유연)
+  const visible = useMemo(() => {
+    let base = rows.slice(0, PAGE);
+    if (matchCode && !base.some((r) => r.code === matchCode)) {
+      const fr = rows.find((r) => r.code === matchCode);
+      if (fr) base = [fr, ...rows.filter((r) => r.code !== matchCode)].slice(0, PAGE);
+    }
+    return base;
+  }, [rows, matchCode]);
+  const hiddenCount = rows.length - visible.length;
+
+  useEffect(() => {
+    if (!matchCode) return;
+    const ind = rows.find((r) => r.code === matchCode);
+    if (ind && ind.type === "numeric" && trend[ind.code]) setExpanded(matchCode);
+    setHighlight(matchCode);
+    const t1 = setTimeout(
+      () => focusRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      250,
+    );
+    const t2 = setTimeout(() => setHighlight(null), 2400);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [matchCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div style={{ overflowX: "auto" }}>
@@ -81,24 +123,46 @@ export function EsgIndicatorTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((ind) => {
-            const t = trend[ind.label];
-            const expandable = ind.type === "numeric" && !ind.locked && !!t;
-            const isOpen = expanded === ind.label;
+          {visible.map((ind) => {
+            const t = trend[ind.code];
+            const hasSubs = !!ind.subs?.length;
+            const expandable = !ind.locked && ((ind.type === "numeric" && !!t) || hasSubs);
+            const isOpen = expanded === ind.code;
             return (
               <RowGroup
-                key={ind.label}
+                key={ind.code}
                 ind={ind}
                 trend={t}
                 expandable={expandable}
                 isOpen={isOpen}
-                onToggle={() => expandable && setExpanded(isOpen ? null : ind.label)}
-                onCompare={onCompare}
+                highlighted={highlight === ind.code}
+                rowRef={matchCode === ind.code ? focusRef : undefined}
+                onToggle={() => expandable && setExpanded(isOpen ? null : ind.code)}
               />
             );
           })}
         </tbody>
       </table>
+
+      {hiddenCount > 0 && (
+        <div style={{ textAlign: "center", padding: "12px 0 4px" }}>
+          <button
+            onClick={() => onSeeAll?.()}
+            style={{
+              border: `1px solid ${colors.primary}`,
+              background: colors.primary,
+              borderRadius: 8,
+              padding: "7px 18px",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            전체 보기
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -108,27 +172,42 @@ function RowGroup({
   trend,
   expandable,
   isOpen,
+  highlighted,
+  rowRef,
   onToggle,
-  onCompare,
 }: {
   ind: DetailIndicator;
   trend?: CompanyDetail["trend"][string];
   expandable: boolean;
   isOpen: boolean;
+  highlighted?: boolean;
+  rowRef?: React.Ref<HTMLTableRowElement>;
   onToggle: () => void;
-  onCompare?: (label: string) => void;
 }) {
   return (
     <>
       <tr
+        ref={rowRef}
         onClick={expandable ? onToggle : undefined}
-        style={{ cursor: expandable ? "pointer" : "default" }}
+        style={{
+          cursor: expandable ? "pointer" : "default",
+          background: highlighted ? `${colors.accent}1A` : undefined,
+          transition: "background 0.4s ease",
+        }}
       >
         <td style={{ padding: "12px", borderBottom: `1px solid ${colors.border}` }}>
           <span style={{ fontSize: 14, color: colors.textBase, fontWeight: 500 }}>{ind.label}</span>
         </td>
         <td style={{ padding: "12px", borderBottom: `1px solid ${colors.border}`, textAlign: "right" }}>
-          <ValueCell ind={ind} expandable={expandable} expanded={isOpen} />
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
+            <ValueCell ind={ind} />
+            {expandable &&
+              (isOpen ? (
+                <CaretDownOutlined style={{ fontSize: 10, color: colors.textHint }} />
+              ) : (
+                <CaretRightOutlined style={{ fontSize: 10, color: colors.textHint }} />
+              ))}
+          </span>
         </td>
         <td style={{ padding: "12px", borderBottom: `1px solid ${colors.border}`, textAlign: "right" }}>
           {ind.type === "numeric" && !ind.locked ? (
@@ -140,36 +219,101 @@ function RowGroup({
           )}
         </td>
       </tr>
-      {isOpen && trend && (
+      {isOpen && (
         <tr>
           <td colSpan={3} style={{ borderBottom: `1px solid ${colors.border}`, background: colors.bgPage, padding: "14px 16px" }}>
-            <div style={{ height: 160 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={trend.series} margin={{ top: 6, right: 12, bottom: 0, left: -8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E6EAEE" vertical={false} />
-                  <XAxis dataKey="year" tick={{ fontSize: 11, fill: colors.textSub }} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: colors.textSub }} tickLine={false} width={56} />
-                  <RTooltip formatter={(v) => [Number(v).toLocaleString("ko-KR"), ind.label]} labelFormatter={(l) => `${l}년`} />
-                  <Bar dataKey="value" fill={colors.primary} radius={[4, 4, 0, 0]} maxBarSize={44} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, fontSize: 12, color: colors.textSub }}>
-              {trend.unit && <span>단위: {trend.unit}</span>}
-              <span>· {trend.series[0]?.year}→{trend.series[trend.series.length - 1]?.year}</span>
-              <a
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCompare?.(ind.label);
-                }}
-                style={{ marginLeft: "auto", color: colors.primary, fontWeight: 600, cursor: "pointer" }}
-              >
-                다른 기업과 비교 →
-              </a>
-            </div>
+            {ind.subs?.length ? (
+              <SubDetail ind={ind} />
+            ) : trend ? (
+              <>
+                <div style={{ height: 160 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={trend.series} margin={{ top: 6, right: 12, bottom: 0, left: -8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E6EAEE" vertical={false} />
+                      <XAxis dataKey="year" tick={{ fontSize: 11, fill: colors.textSub }} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: colors.textSub }} tickLine={false} width={56} />
+                      <RTooltip formatter={(v) => [Number(v).toLocaleString("ko-KR"), ind.label]} labelFormatter={(l) => `${l}년`} />
+                      <Bar dataKey="value" fill={colors.primary} radius={[4, 4, 0, 0]} maxBarSize={44} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, fontSize: 12, color: colors.textSub }}>
+                  {trend.unit && <span>단위: {trend.unit}</span>}
+                  <span>· {trend.series[0]?.year}→{trend.series[trend.series.length - 1]?.year}</span>
+                </div>
+              </>
+            ) : null}
           </td>
         </tr>
       )}
     </>
+  );
+}
+
+// sub컬럼 상세 — 수치형은 sub별 막대, 도입형은 sub별 도입 현황 칩
+function SubDetail({ ind }: { ind: DetailIndicator }) {
+  // 도입형은 대표(total) 제외하고 실제 항목만 칩으로 (수치형은 합계 막대 유지)
+  const subs = (ind.subs ?? []).filter((s) => (ind.type === "boolean" ? s.code !== "total" : true));
+  if (ind.type === "numeric") {
+    const data = subs.map((s) => ({ name: s.name, value: s.value ?? 0, na: s.value === null }));
+    return (
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: colors.textSub, marginBottom: 8 }}>
+          세부 항목별 값{ind.unit ? ` (${ind.unit})` : ""}
+        </div>
+        <div style={{ height: 160 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 6, right: 12, bottom: 0, left: -8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E6EAEE" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: colors.textSub }} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: colors.textSub }} tickLine={false} width={56} />
+              <RTooltip formatter={(v) => [Number(v).toLocaleString("ko-KR"), ind.label]} />
+              <Bar dataKey="value" fill={colors.primary} radius={[4, 4, 0, 0]} maxBarSize={44} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        {data.some((d) => d.na) && (
+          <div style={{ fontSize: 11.5, color: colors.textHint, marginTop: 6 }}>
+            · 표시: 비공개(미공시) 항목은 0으로 표기
+          </div>
+        )}
+      </div>
+    );
+  }
+  // boolean: sub별 도입 현황 칩
+  return (
+    <div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: colors.textSub, marginBottom: 10 }}>세부 항목별 현황</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {subs.map((s) => {
+          const adopted = s.state === "adopted";
+          const notAdopted = s.state === "not_adopted";
+          const tone = adopted
+            ? { bg: `${colors.accent}14`, fg: colors.accent, mark: "✓" }
+            : notAdopted
+              ? { bg: colors.bgPage, fg: colors.textSub, mark: "" }
+              : { bg: colors.bgPage, fg: colors.textHint, mark: "" };
+          return (
+            <span
+              key={s.code}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12.5,
+                background: tone.bg,
+                color: tone.fg,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 16,
+                padding: "4px 11px",
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>{s.name}</span>
+              <span>{adopted ? `${tone.mark} 도입` : notAdopted ? "미도입" : "비공개"}</span>
+            </span>
+          );
+        })}
+      </div>
+    </div>
   );
 }

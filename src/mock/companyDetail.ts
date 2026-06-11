@@ -5,13 +5,31 @@ import { BULK_COMPANIES } from "./bulkData";
 import { YEARS } from "./observations";
 import { SOURCES } from "./sources";
 import { tierOf, canAccess } from "./access";
+import { GROUPED_INDICATORS } from "./indicatorGrouping";
+import type { GroupedIndicator } from "./indicatorGrouping";
+import { getIndicatorColumns } from "./indicatorSearch";
+import type { SubDef } from "./indicatorSearch";
+
+// 코드 → sub컬럼 정의 (그리드와 동일: E3_1 Scope, E4 이니셔티브 등)
+const CODE_SUBS: Record<string, SubDef[]> = Object.fromEntries(
+  getIndicatorColumns()
+    .filter((c) => c.subs && c.subs.length)
+    .map((c) => [c.id, c.subs as SubDef[]]),
+);
 
 const CATEGORIES: Category[] = ["E", "S", "G"];
 
 export type IndType = "numeric" | "boolean" | "text";
 export type BoolState = "adopted" | "not_adopted" | "undisclosed";
 
+export interface SubCell {
+  code: string;
+  name: string;
+  value?: number | null; // numeric sub
+  state?: BoolState; // boolean sub
+}
 export interface DetailIndicator {
+  code: string; // = 분류 코드 (그리드와 동일 체계)
   label: string;
   type: IndType;
   unit?: string;
@@ -20,6 +38,7 @@ export interface DetailIndicator {
   state?: BoolState; // boolean
   disclosed?: boolean; // text
   url?: string; // text
+  subs?: SubCell[]; // sub컬럼 있는 지표(예: Scope1/2/3, 이니셔티브별)
   source: SourceDef;
   year: number;
   locked: boolean;
@@ -52,41 +71,22 @@ export interface CompanyDetail {
   similar: { id: string; name: string }[];
 }
 
-// 다타입 지표 정의 — 화면엔 타입 소제목 없음, 셀 모양만 분기
-type Def = { cat: Category; label: string; type: IndType; unit?: string; source: SourceCode };
-const DETAIL_INDICATORS: Def[] = [
-  // E
-  { cat: "E", label: "온실가스 배출량 (Scope 1)", type: "numeric", unit: "tCO₂eq", source: "ENV" },
-  { cat: "E", label: "온실가스 배출량 (Scope 2)", type: "numeric", unit: "tCO₂eq", source: "NGMS" },
-  { cat: "E", label: "재생에너지 사용 비율", type: "numeric", unit: "%", source: "SR" },
-  { cat: "E", label: "용수 재이용률", type: "numeric", unit: "%", source: "SR" },
-  { cat: "E", label: "에너지 사용량", type: "numeric", unit: "TJ", source: "ENV" },
-  { cat: "E", label: "폐기물 재활용률", type: "numeric", unit: "%", source: "ENV" },
-  { cat: "E", label: "탄소중립 목표 선언", type: "boolean", source: "DART" },
-  { cat: "E", label: "RE100 가입", type: "boolean", source: "SR" },
-  { cat: "E", label: "환경경영시스템(ISO14001)", type: "boolean", source: "DART" },
-  { cat: "E", label: "기후리스크 관리체계", type: "text", source: "SR" },
-  { cat: "E", label: "생물다양성 보호 정책", type: "text", source: "SR" },
-  // S
-  { cat: "S", label: "여성 임원 비율", type: "numeric", unit: "%", source: "DART" },
-  { cat: "S", label: "재해율", type: "numeric", unit: "%", source: "NGMS" },
-  { cat: "S", label: "1인당 교육시간", type: "numeric", unit: "시간", source: "SR" },
-  { cat: "S", label: "이직률", type: "numeric", unit: "%", source: "SR" },
-  { cat: "S", label: "노동조합 설립", type: "boolean", source: "DART" },
-  { cat: "S", label: "협력사 행동규범", type: "boolean", source: "SR" },
-  { cat: "S", label: "안전보건경영시스템(ISO45001)", type: "boolean", source: "DART" },
-  { cat: "S", label: "인권정책 공시", type: "text", source: "SR" },
-  { cat: "S", label: "정보보호 정책", type: "text", source: "DART" },
-  // G
-  { cat: "G", label: "전자투표제 도입", type: "boolean", source: "DART" },
-  { cat: "G", label: "집중투표제 도입", type: "boolean", source: "DART" },
-  { cat: "G", label: "감사위원회 설치", type: "boolean", source: "DART" },
-  { cat: "G", label: "ESG위원회 설치", type: "boolean", source: "SR" },
-  { cat: "G", label: "사외이사 비율", type: "numeric", unit: "%", source: "DART" },
-  { cat: "G", label: "이사회 개최 횟수", type: "numeric", unit: "회", source: "DART" },
-  { cat: "G", label: "최대주주 지분율", type: "numeric", unit: "%", source: "DART" },
-  { cat: "G", label: "주주환원 정책 공시", type: "text", source: "DART" },
-];
+// 다타입 지표 정의 — 그리드와 동일한 분류 코드 체계(GROUPED_INDICATORS 노출)에서 파생
+type Def = { cat: Category; code: string; label: string; type: IndType; unit?: string; source: SourceCode };
+// 출처(데이터 유지용, 화면 비노출) — 일부 수치형은 가공출처(SR)로 두어 잠금 데모 유지
+function srcOf(g: GroupedIndicator): SourceCode {
+  if (g.type !== "numeric") return "DART";
+  if (hash(g.code) % 3 === 0) return "SR";
+  return g.category === "E" ? "ENV" : g.category === "S" ? "NGMS" : "DART";
+}
+const DETAIL_INDICATORS: Def[] = GROUPED_INDICATORS.filter((g) => g.kind === "expose").map((g) => ({
+  cat: g.category,
+  code: g.code,
+  label: g.name,
+  type: g.type,
+  unit: g.unit,
+  source: srcOf(g),
+}));
 
 function hash(s: string): number {
   let h = 0;
@@ -156,11 +156,12 @@ export function getCompanyDetail(companyId: string, plan: ViewerPlan = "member")
   }
 
   for (const def of DETAIL_INDICATORS) {
-    const seed = hash(`${companyId}|${def.label}`);
+    const seed = hash(`${companyId}|${def.code}`);
     const source = SOURCES[def.source];
     const tier = tierOf(def.source, latestYear, latestYear);
     const locked = !canAccess(plan, tier);
     const row: DetailIndicator = {
+      code: def.code,
       label: def.label,
       type: def.type,
       unit: def.unit,
@@ -180,7 +181,7 @@ export function getCompanyDetail(companyId: string, plan: ViewerPlan = "member")
         const prev = series[series.length - 2].value;
         row.value = base;
         row.yoy = prev !== 0 ? fmtYoY(base, prev, def.unit === "%") : null;
-        trend[def.label] = { label: def.label, unit: def.unit, source, series };
+        trend[def.code] = { label: def.label, unit: def.unit, source, series };
       }
     } else if (def.type === "boolean") {
       const r = seed % 100;
@@ -188,6 +189,22 @@ export function getCompanyDetail(companyId: string, plan: ViewerPlan = "member")
     } else {
       row.disclosed = seed % 100 < 75;
       if (row.disclosed) row.url = `https://example.com/disclosure/${companyId}/${seed % 1000}`;
+    }
+
+    // sub컬럼 있는 지표: sub별 값 생성 (펼침 상세에서 표시)
+    const subs = CODE_SUBS[def.code];
+    if (subs && subs.length) {
+      row.subs = subs.map((s) => {
+        const ss = hash(`${companyId}|${def.code}|${s.code}`);
+        if (def.type === "numeric") {
+          return { code: s.code, name: s.name, value: ss % 9 === 0 ? null : Math.round(refValue(ss, def.unit)) };
+        }
+        if (def.type === "boolean") {
+          const r = ss % 100;
+          return { code: s.code, name: s.name, state: r < 60 ? "adopted" : r < 85 ? "not_adopted" : "undisclosed" };
+        }
+        return { code: s.code, name: s.name };
+      });
     }
     indicators[def.cat].push(row);
   }
