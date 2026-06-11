@@ -23,7 +23,7 @@ Vite + React 19 + TS + AntD 5 + react-router 7 + recharts 3 + Glide Data Grid 6.
    - 기업 상세 `mock/companyDetail.ts:getCompanyDetail()`
    - 기업 ESG 정보 검색(대량) `mock/bulkData.ts:getBulkData()/getBulkCell()`
    - 랜딩 집계 `mock/landing.ts:getCoverageStats/getIndustryCompare/getDisclosureRate/getSectorTrend/...`
-   컴포넌트에 값 하드코딩 금지.
+     컴포넌트에 값 하드코딩 금지.
 3. **0값 = 비공개(NULL)** — 환경 공시에서 0은 미공개. value=null로 취급.
 4. **셀 단위 출처·연도** — 모든 데이터 포인트에 출처(DART/SR/NGMS/ENV/NICE)+회계연도. QESG 고유 강점.
 5. **과금/잠금 = 데이터 속성** — `mock/access.ts` 단일 권한 레이어. 출처 tier(공개 공시=무료 / SR·NICE 가공=프리미엄) + 다개년 규칙. UI에 잠금 로직 흩지 말 것.
@@ -46,7 +46,7 @@ Vite + React 19 + TS + AntD 5 + react-router 7 + recharts 3 + Glide Data Grid 6.
 
 mobile <640 / tablet <1024 / desktop <1280 / wide ≥1280.
 
-- 우선순위: **1순위(검색·커버리지·카탈로그) 항상** / 2순위(피드·산업비교·공시율) 모바일 숨김 / 3순위(섹터트렌드·최근업데이트·출처) 먼저 축소.
+- 우선순위: **1순위(검색·커버리지·카탈로그) 항상** / 2순위(피드·산업비교·공시율) 모바일 숨김 / 3순위(업종트렌드·최근업데이트·출처) 먼저 축소.
 - **와이드**: 우측 sticky 레일(최근업데이트 + 가입 CTA). **최근업데이트는 항상 화면 오른쪽**(데스크톱 2단에서도 우측 컬럼).
 - **요소 단위 처리 원칙**: 텍스트가 뭉개질 바엔 한 줄 `ellipsis` 또는 **요소 하나씩 숨김**(겹침 방지). 위젯 통째로가 아니라 내부 요소 단위로.
 - 위젯 등장은 `qesgFadeIn`(styles/anim.css)로 부드럽게.
