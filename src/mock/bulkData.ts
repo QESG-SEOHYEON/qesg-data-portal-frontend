@@ -68,14 +68,14 @@ const SYNTHETIC: [string, string, string][] = [
 ];
 
 export const BULK_COMPANIES: BulkCompany[] = [
-  // 기존 목 기업에 섹터 부여
+  // 기존 목 기업에 업종 부여
   { id: "005930", name: "삼성전자", sector: "반도체" },
   { id: "000660", name: "SK하이닉스", sector: "반도체" },
   { id: "051910", name: "LG화학", sector: "화학" },
   { id: "005380", name: "현대자동차", sector: "자동차" },
-  ...COMPANIES.filter((c) => !["005930", "000660", "051910", "005380", "006400"].includes(c.id)).map(
-    (c) => ({ id: c.id, name: c.label, sector: "유통" }),
-  ),
+  ...COMPANIES.filter(
+    (c) => !["005930", "000660", "051910", "005380", "006400"].includes(c.id),
+  ).map((c) => ({ id: c.id, name: c.label, sector: "유통" })),
   ...SYNTHETIC.map(([id, name, sector]) => ({ id, name, sector })),
 ];
 
@@ -127,7 +127,7 @@ export function getBulkCell(
 
 export interface BulkFilter {
   categories: Category[]; // 표시할 지표 카테고리
-  sector?: string; // 섹터 필터 (rows)
+  sector?: string; // 업종 필터 (rows)
   companyIds?: string[]; // 포트폴리오 일괄 입력 (지정 시 우선)
 }
 

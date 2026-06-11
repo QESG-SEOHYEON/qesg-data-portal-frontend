@@ -41,9 +41,9 @@ export function AddIndicatorColumn({
         <PlusOutlined style={{ fontSize: 11 }} /> 지표 추가
       </button>
       {emphasize && (
-        <span style={{ fontSize: 11, color: colors.textHint, fontWeight: 400, whiteSpace: "nowrap" }}>
-          지표를 추가해 비교
-        </span>
+        <span
+          style={{ fontSize: 11, color: colors.textHint, fontWeight: 400, whiteSpace: "nowrap" }}
+        ></span>
       )}
     </div>
   );

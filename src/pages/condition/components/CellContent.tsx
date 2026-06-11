@@ -1,6 +1,6 @@
 // 타입별 셀 렌더 (개별 기업 페이지와 동일 규칙) — 수치/도입3구분/서술.
 // ⚠️ 출처(데이터 소스) 표시는 사내 정책 확정 전까지 화면에서 끔 — cell.source 데이터는 유지, 렌더만 생략.
-import { LinkOutlined } from "@ant-design/icons";
+// ⚠️ 그리드 셀은 "기업 상세로 이동"으로 일원화 → 서술형 원문 링크는 그리드에서 끔(원문은 상세 페이지에서).
 import type { Cell, IndicatorColumn, BoolState } from "@/mock/indicatorSearch";
 import { colors } from "@/theme/tokens";
 
@@ -34,11 +34,10 @@ export function CellContent({ col, cell, locked }: { col: IndicatorColumn; cell:
       <span style={{ fontSize: 12, color: colors.textHint }}>비공개</span>
     );
   }
+  // 서술형: 원문 링크 대신 상태 텍스트만 (셀 클릭은 기업 상세로 — 원문은 상세 페이지에서)
   const t = cell.value as { disclosed: boolean; url?: string };
   return t.disclosed ? (
-    <a href={t.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, fontWeight: 600, color: colors.primary }}>
-      공시 <LinkOutlined style={{ fontSize: 10 }} />
-    </a>
+    <span style={{ fontSize: 12.5, fontWeight: 600, color: colors.primary }}>공시</span>
   ) : (
     <span style={{ fontSize: 13, color: colors.textHint }}>비공개</span>
   );

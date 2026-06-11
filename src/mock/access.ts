@@ -40,7 +40,7 @@ export function canAccess(plan: ViewerPlan, tier: Tier): boolean {
 export const PLAN_LABELS: Record<ViewerPlan, string> = {
   guest: "비로그인",
   member: "개인 회원",
-  enterprise: "기업 회원",
+  enterprise: "플랜 회원",
 };
 
 // 표(컬럼=지표) 동시 조회 한도 — 초과 시 업그레이드 유도 (가안)

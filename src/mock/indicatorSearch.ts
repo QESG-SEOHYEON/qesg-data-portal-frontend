@@ -69,12 +69,22 @@ const SUBS: Record<string, SubDef[]> = {
     { code: "indirect", name: "간접에너지" },
   ],
   E4: [
+    { code: "total", name: "가입 여부" }, // 접힘 대표(온실가스 합계처럼)
     { code: "cdp", name: "CDP" },
     { code: "re100", name: "RE100" },
     { code: "sbti", name: "SBTi" },
     { code: "kre100", name: "K-RE100" },
     { code: "tnfd", name: "TNFD" },
     { code: "pri", name: "PRI" },
+  ],
+  // 도입형(인증 보유) — sub별 인증 보유 현황
+  S2: [
+    { code: "iso37001", name: "ISO37001" },
+    { code: "iso37301", name: "ISO37301" },
+  ],
+  S15: [
+    { code: "iso45001", name: "ISO45001" },
+    { code: "kosha", name: "KOSHA-MS" },
   ],
 };
 
@@ -153,7 +163,7 @@ export function cellKey(colId: string, year: number, subCode?: string | null): s
 }
 
 export interface RowFilter {
-  sector?: string;
+  sectors?: string[]; // 업종 복수 선택
   companyIds?: string[];
   years?: number[];
 }
@@ -163,8 +173,9 @@ export function getIndicatorRows(filter: RowFilter = {}): IndicatorRow[] {
   if (filter.companyIds && filter.companyIds.length > 0) {
     const set = new Set(filter.companyIds);
     companies = BULK_COMPANIES.filter((c) => set.has(c.id));
-  } else if (filter.sector) {
-    companies = BULK_COMPANIES.filter((c) => c.sector === filter.sector);
+  } else if (filter.sectors && filter.sectors.length > 0) {
+    const set = new Set(filter.sectors);
+    companies = BULK_COMPANIES.filter((c) => set.has(c.sector));
   }
   return companies.map((c) => {
     const cells: Record<string, Cell> = {};
@@ -191,6 +202,14 @@ export const KEYWORD_EXAMPLES: KeywordChip[] = [
   { label: "온실가스 배출량", term: "온실가스" },
   { label: "전자투표제", term: "전자투표" },
   { label: "여성 임직원 비율", term: "여성" },
+  { label: "에너지 소비량", term: "에너지" },
+  { label: "용수 취수량", term: "용수" },
+  { label: "폐기물 배출량", term: "폐기물" },
+  { label: "사외이사 비중", term: "사외이사" },
+  { label: "산업재해", term: "재해" },
+  { label: "정보보호", term: "정보보호" },
+  { label: "법규위반·제재", term: "제재" },
+  { label: "이사회 운영", term: "이사회" },
 ];
 // 카테고리별 주요 지표 바로가기 칩
 export const CATEGORY_KEYWORDS: Record<Category, KeywordChip[]> = {
