@@ -119,6 +119,28 @@ function fmtYoY(base: number, prev: number, isPct: boolean): string {
   return `${sign}${Math.abs(diff).toFixed(1)}${isPct ? "%p" : "%"}`;
 }
 
+// 검색 결과 기업 카드용 경량 메타 (업종·시장·규모·SR 발간 여부) — 결정적 생성
+const SECTOR_POOL = [
+  "전기·전자", "화학", "자동차", "2차전지", "바이오·제약", "금융",
+  "유통", "철강·금속", "건설", "IT·서비스", "통신", "식품",
+];
+export interface CompanyCardMeta {
+  sector: string;
+  market: string;
+  size: string;
+  srPublished: boolean; // 지속가능경영보고서 발간 여부 (사실 정보, 미발간은 칩 없음)
+}
+export function getCompanyCardMeta(companyId: string): CompanyCardMeta {
+  const bulk = BULK_COMPANIES.find((c) => c.id === companyId);
+  const h = hash(companyId);
+  return {
+    sector: bulk?.sector ?? SECTOR_POOL[h % SECTOR_POOL.length],
+    market: h % 3 === 0 ? "코스닥" : "코스피",
+    size: h % 4 === 0 ? "중견기업" : "대기업",
+    srPublished: h % 4 !== 0,
+  };
+}
+
 export function getCompanyDetail(companyId: string, plan: ViewerPlan = "member"): CompanyDetail | null {
   const bulk = BULK_COMPANIES.find((c) => c.id === companyId);
   if (!bulk) return null;

@@ -73,31 +73,56 @@ export function SrDisclosureStatus({ embedded = false }: { embedded?: boolean })
                   }}
                 >
                   <div style={{ width: 96, flexShrink: 0 }}>
-                    <div style={{ fontSize: 12.5, color: colors.textBase, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                    <div
+                      style={{
+                        fontSize: 12.5,
+                        color: colors.textBase,
+                        fontWeight: 600,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
                       {r.disclosedAt}
                     </div>
                     <div style={{ fontSize: 11, color: colors.textHint }}>{r.daysAgo}일 전</div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                    <CheckCircleFilled style={{ color: colors.accent, fontSize: 13, flexShrink: 0 }} />
-                    <span style={{ fontSize: 14, color: colors.textBase, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <div
+                    style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    <CheckCircleFilled
+                      style={{ color: colors.accent, fontSize: 13, flexShrink: 0 }}
+                    />
+                    <span
+                      style={{
+                        fontSize: 14,
+                        color: colors.textBase,
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
                       {r.company}
                     </span>
-                    <span style={{ fontSize: 12, color: colors.textSub, flexShrink: 0 }}>{r.stockCode}</span>
+                    <span style={{ fontSize: 12, color: colors.textSub, flexShrink: 0 }}>
+                      {r.stockCode}
+                    </span>
                   </div>
                   <a
                     href={r.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ fontSize: 12.5, color: colors.primary, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}
+                    style={{
+                      fontSize: 12.5,
+                      color: colors.primary,
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
                   >
                     원문 <LinkOutlined style={{ fontSize: 11 }} />
                   </a>
                 </div>
               ))}
-            </div>
-            <div style={{ marginTop: 12, fontSize: 11.5, color: colors.textHint }}>
-              최근 30일 공시 기준 · 원문 링크로 직접 확인(파일 다운로드 미제공)
             </div>
           </>
         ) : (
@@ -116,15 +141,23 @@ export function SrDisclosureStatus({ embedded = false }: { embedded?: boolean })
                   }}
                 >
                   <div style={{ width: 96, flexShrink: 0 }}>
-                    <div style={{ fontSize: 12.5, color: colors.textBase, fontWeight: 600 }}>{r.disclosedAt}</div>
+                    <div style={{ fontSize: 12.5, color: colors.textBase, fontWeight: 600 }}>
+                      {r.disclosedAt}
+                    </div>
                     <div style={{ fontSize: 11, color: colors.textHint }}>{r.daysAgo}일 전</div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                  <div
+                    style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}
+                  >
                     <CheckCircleFilled style={{ color: colors.accent, fontSize: 13 }} />
-                    <span style={{ fontSize: 14, color: colors.textBase, fontWeight: 600 }}>{r.company}</span>
+                    <span style={{ fontSize: 14, color: colors.textBase, fontWeight: 600 }}>
+                      {r.company}
+                    </span>
                     <span style={{ fontSize: 12, color: colors.textSub }}>{r.stockCode}</span>
                   </div>
-                  <span style={{ fontSize: 12.5, color: colors.primary, fontWeight: 600 }}>원문</span>
+                  <span style={{ fontSize: 12.5, color: colors.primary, fontWeight: 600 }}>
+                    원문
+                  </span>
                 </div>
               ))}
             </div>

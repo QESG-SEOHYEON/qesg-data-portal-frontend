@@ -6,7 +6,9 @@ import { colors } from "@/theme/tokens";
 export function DisclosureSources({ detail }: { detail: CompanyDetail }) {
   return (
     <section style={{ marginTop: 28 }}>
-      <h2 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 700, color: colors.textBase }}>공시 원문</h2>
+      <h2 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 700, color: colors.textBase }}>
+        공시 원문
+      </h2>
       <div
         style={{
           background: colors.bgSurface,
@@ -34,15 +36,18 @@ export function DisclosureSources({ detail }: { detail: CompanyDetail }) {
               href={d.url}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ fontSize: 13, color: colors.primary, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}
+              style={{
+                fontSize: 13,
+                color: colors.primary,
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
             >
               원문 <LinkOutlined style={{ fontSize: 11 }} />
             </a>
           </div>
         ))}
-      </div>
-      <div style={{ marginTop: 10, fontSize: 11.5, color: colors.textHint }}>
-        원문 링크로 직접 확인 (파일 다운로드 미제공)
       </div>
     </section>
   );

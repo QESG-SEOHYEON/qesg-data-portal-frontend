@@ -269,7 +269,7 @@ export function EsgNews() {
                       marginBottom: 10,
                     }}
                   >
-                    {n.summary}
+                    {n.body}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <CompanyTag companies={n.companies} />
