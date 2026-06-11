@@ -1,18 +1,30 @@
-// ⭐ 조건 검색 데이터 경계 (GET /api/indicator-search 대체 예정)
-// 컬럼(지표)마다 type(numeric/boolean/text)로 셀 렌더 분기. 기업×지표 대량 조회.
-import type { Category, SourceCode } from "@/types";
+// ⭐ 통합 검색 데이터 경계 (GET /api/indicator-search 대체 예정)
+// 지표 단일 소스 = i_indicator_master(CATALOG_RAW, 119). 컬럼·검색 자동완성·바로가기를 모두 여기서 파생 → id 1:1.
+// (여러 컬럼인 지표는 i_indicator_sub로 컬럼 그룹 확장 예정 — 목업은 master 1지표=1컬럼.)
+// ⚠️ 출처는 화면에서 끔(데이터만 유지). DB 직접 연결 X(목업).
+import type { Category, IndicatorItem, SourceCode } from "@/types";
+import { CATALOG_RAW } from "./catalogData";
+import type { CatalogRaw } from "./catalogData";
 import { BULK_COMPANIES } from "./bulkData";
 
 export type CellType = "numeric" | "boolean" | "text";
 export type BoolState = "adopted" | "not_adopted" | "undisclosed";
 
+// 서브지표 (i_indicator_sub) — 한 지표가 여러 셀일 때의 하위 컬럼
+export interface SubDef {
+  code: string;
+  name: string;
+  unit?: string;
+}
+
 export interface IndicatorColumn {
-  id: string;
-  label: string;
+  id: string; // = indicator_code (master)
+  label: string; // = indicator_name
   unit?: string;
   category: Category;
-  type: CellType;
-  source: SourceCode;
+  type: CellType; // = value_type(measure) 기반
+  source: SourceCode; // 데이터 유지용(화면 비노출)
+  subs?: SubDef[]; // 있으면 sub별 컬럼으로 펼침(지표명 그룹 헤더)
 }
 
 export interface Cell {
@@ -27,34 +39,82 @@ export interface IndicatorRow {
   cells: Record<string, Cell>;
 }
 
-const COLUMNS: IndicatorColumn[] = [
-  // E
-  { id: "ghg_s1", label: "온실가스 배출량 (Scope 1)", unit: "tCO₂eq", category: "E", type: "numeric", source: "ENV" },
-  { id: "ghg_s2", label: "온실가스 배출량 (Scope 2)", unit: "tCO₂eq", category: "E", type: "numeric", source: "NGMS" },
-  { id: "renewable", label: "재생에너지 사용 비율", unit: "%", category: "E", type: "numeric", source: "SR" },
-  { id: "carbon_neutral", label: "탄소중립 목표 선언", category: "E", type: "boolean", source: "DART" },
-  { id: "iso14001", label: "환경경영(ISO14001)", category: "E", type: "boolean", source: "DART" },
-  { id: "climate_risk", label: "기후리스크 관리체계", category: "E", type: "text", source: "SR" },
-  // S
-  { id: "female_exec", label: "여성 임원 비율", unit: "%", category: "S", type: "numeric", source: "DART" },
-  { id: "injury", label: "재해율", unit: "%", category: "S", type: "numeric", source: "NGMS" },
-  { id: "union", label: "노동조합 설립", category: "S", type: "boolean", source: "DART" },
-  { id: "iso45001", label: "안전보건(ISO45001)", category: "S", type: "boolean", source: "DART" },
-  { id: "human_rights", label: "인권정책 공시", category: "S", type: "text", source: "SR" },
-  // G
-  { id: "evote", label: "전자투표제", category: "G", type: "boolean", source: "DART" },
-  { id: "cumvote", label: "집중투표제", category: "G", type: "boolean", source: "DART" },
-  { id: "audit_comm", label: "감사위원회 설치", category: "G", type: "boolean", source: "DART" },
-  { id: "outside_dir", label: "사외이사 비율", unit: "%", category: "G", type: "numeric", source: "DART" },
-  { id: "shareholder_return", label: "주주환원 정책 공시", category: "G", type: "text", source: "DART" },
-];
+// measure(value_type) → 셀 렌더 타입
+function measureToType(m: string): CellType {
+  if (m === "yn") return "boolean";
+  if (m === "detail") return "text";
+  return "numeric"; // num | percent
+}
+// 출처(데이터 유지용, 화면 비노출) — 결정적 배정
+function sourceOf(c: CatalogRaw): SourceCode {
+  if (c.measure === "yn" || c.measure === "detail") return "DART";
+  if (c.category === "E") return "ENV";
+  if (c.category === "S") return "NGMS";
+  return "DART";
+}
 
-// 기본 노출 컬럼 (나머지는 ColumnPicker로 추가)
-export const DEFAULT_COLUMN_IDS = ["ghg_s1", "renewable", "carbon_neutral", "female_exec", "evote"];
+// 서브지표 목 데이터 (i_indicator_sub 발췌, 출처 변형은 합쳐 unique) — 일부 지표만 sub 보유
+const SUBS: Record<string, SubDef[]> = {
+  E2: [
+    { code: "separate", name: "IFRS(별도)" },
+    { code: "consolidated", name: "IFRS(연결)" },
+  ],
+  E3_1: [
+    { code: "scope1", name: "Scope1" },
+    { code: "scope2", name: "Scope2" },
+    { code: "scope3", name: "Scope3" },
+    { code: "total", name: "합계" },
+  ],
+  E5: [
+    { code: "direct", name: "직접에너지" },
+    { code: "indirect", name: "간접에너지" },
+  ],
+  E4: [
+    { code: "cdp", name: "CDP" },
+    { code: "re100", name: "RE100" },
+    { code: "sbti", name: "SBTi" },
+    { code: "kre100", name: "K-RE100" },
+    { code: "tnfd", name: "TNFD" },
+    { code: "pri", name: "PRI" },
+  ],
+};
+
+// master 119 → 컬럼 (sub 있으면 부착)
+const COLUMNS: IndicatorColumn[] = CATALOG_RAW.map((c) => ({
+  id: c.code,
+  label: c.name,
+  unit: c.unit || undefined,
+  category: c.category,
+  type: measureToType(c.measure),
+  source: sourceOf(c),
+  subs: SUBS[c.code],
+}));
 
 export function getIndicatorColumns(): IndicatorColumn[] {
   return COLUMNS;
 }
+
+// 검색 자동완성용 지표 목록 (컬럼과 동일 id) — 검색·표·바로가기가 한 소스
+export function getIndicatorSuggestions(): IndicatorItem[] {
+  return COLUMNS.map((c) => ({
+    type: "indicator",
+    id: c.id,
+    label: c.label,
+    category: c.category,
+    unit: c.unit,
+    aliases: [],
+  }));
+}
+
+// 기본 노출 컬럼 — 카테고리별 앞쪽 몇 개 (대량 진입 시 압도 방지)
+function firstOf(cat: Category, n: number): string[] {
+  return COLUMNS.filter((c) => c.category === cat).slice(0, n).map((c) => c.id);
+}
+export const DEFAULT_COLUMN_IDS = [...firstOf("E", 2), ...firstOf("S", 2), ...firstOf("G", 1)];
+
+// 회계연도 (조회 가능 연도) — 기본 조회는 가장 최신 연도(공시 시차 반영, 2026 기준 FY2025)
+export const SEARCH_YEARS = [2022, 2023, 2024, 2025];
+export const SEARCH_LATEST_YEAR = 2025;
 
 function hash(s: string): number {
   let h = 0;
@@ -62,17 +122,12 @@ function hash(s: string): number {
   return h;
 }
 
-function genCell(companyId: string, col: IndicatorColumn): Cell {
-  const seed = hash(`${companyId}|${col.id}`);
-  const base: Omit<Cell, "value"> = { source: col.source, year: 2024 };
+function genCell(companyId: string, col: IndicatorColumn, year: number, subCode?: string | null): Cell {
+  const seed = hash(`${companyId}|${col.id}|${subCode ?? ""}|${year}`);
+  const base: Omit<Cell, "value"> = { source: col.source, year };
   if (col.type === "numeric") {
     if (seed % 8 === 0) return { ...base, value: null }; // 비공개
-    const v =
-      col.unit === "%"
-        ? Number((5 + (seed % 700) / 10).toFixed(1))
-        : col.unit === "tCO₂eq"
-          ? 1000 + (seed % 890000)
-          : 100 + (seed % 9000);
+    const v = col.unit === "%" ? Number((5 + (seed % 700) / 10).toFixed(1)) : 100 + (seed % 900000);
     return { ...base, value: v };
   }
   if (col.type === "boolean") {
@@ -80,16 +135,26 @@ function genCell(companyId: string, col: IndicatorColumn): Cell {
     const state: BoolState = r < 55 ? "adopted" : r < 82 ? "not_adopted" : "undisclosed";
     return { ...base, value: state };
   }
-  // text
+  // text(서술형)
   const disclosed = seed % 100 < 70;
-  return { ...base, value: { disclosed, url: disclosed ? `https://example.com/d/${companyId}/${col.id}` : undefined } };
+  return {
+    ...base,
+    value: { disclosed, url: disclosed ? `https://example.com/d/${companyId}/${col.id}` : undefined },
+  };
+}
+
+// 셀 키: `${컬럼id}@${연도}` (sub 있으면 `#${subCode}` 추가)
+export function cellKey(colId: string, year: number, subCode?: string | null): string {
+  return subCode ? `${colId}@${year}#${subCode}` : `${colId}@${year}`;
 }
 
 export interface RowFilter {
   sector?: string;
   companyIds?: string[];
+  years?: number[];
 }
 export function getIndicatorRows(filter: RowFilter = {}): IndicatorRow[] {
+  const years = filter.years && filter.years.length > 0 ? filter.years : [SEARCH_LATEST_YEAR];
   let companies = BULK_COMPANIES;
   if (filter.companyIds && filter.companyIds.length > 0) {
     const set = new Set(filter.companyIds);
@@ -99,7 +164,11 @@ export function getIndicatorRows(filter: RowFilter = {}): IndicatorRow[] {
   }
   return companies.map((c) => {
     const cells: Record<string, Cell> = {};
-    for (const col of COLUMNS) cells[col.id] = genCell(c.id, col);
+    for (const col of COLUMNS) {
+      const subs = col.subs && col.subs.length ? col.subs : [null];
+      for (const sub of subs)
+        for (const y of years) cells[cellKey(col.id, y, sub?.code)] = genCell(c.id, col, y, sub?.code);
+    }
     return { id: c.id, name: c.name, sector: c.sector, cells };
   });
 }
@@ -108,7 +177,6 @@ export const FREE_ROW_LIMIT = 10; // 비로그인/개인 노출 행 수
 export const ENTERPRISE_ONLY = ["excel", "api", "bulk_portfolio"];
 
 // 검색 전 키워드 바로가기 (중립 단어/지표명 — 클릭 시 그 키워드로 검색 실행)
-// term = 실제 검색어(searchMock 매칭용), label = 표시용. 평가·순위 표현 금지.
 export interface KeywordChip {
   label: string;
   term: string;

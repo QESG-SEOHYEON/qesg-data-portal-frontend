@@ -1,132 +1,190 @@
-// 조건 검색 페이지 (통합검색 본진) — 3상태: 검색 전 → 결과 요약 → 표 비교
+// 통합 검색 페이지 (통합검색 본진) — 3상태: 검색 전 → 결과 요약 → 표 비교
 // 검색 바 상시 상단. 예시 클릭 → 바로 표. 텍스트 검색 → 요약. 표로 비교 → 대량 테이블.
 // 잠금은 플랜 셀렉터(access.ts). 종합점수·등급·순위 없음(안전선).
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { Input, Segmented, Modal } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
-import type { ViewerPlan } from "@/types";
+import { Segmented } from "antd";
+import type { Category, ViewerPlan } from "@/types";
 import { PLAN_LABELS } from "@/mock/access";
-import { colors, layout } from "@/theme/tokens";
+import { colors, categoryColors, layout } from "@/theme/tokens";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { RightRail } from "@/components/RightRail";
+import { SearchWidget } from "@/pages/search/components/SearchWidget";
 import { SearchEntry } from "./components/SearchEntry";
+import { getIndicatorColumns } from "@/mock/indicatorSearch";
 import { ResultsSummary } from "./components/ResultsSummary";
 import { ConditionTable } from "./components/ConditionTable";
 import { LoginModal } from "@/pages/landing/components/LoginModal";
 
 type Mode = "entry" | "summary" | "table";
 
+const CAT_SET = new Set(["E", "S", "G"]);
+
 export function ConditionSearchPage() {
   const navigate = useNavigate();
+  const bp = useBreakpoint();
   const [params] = useSearchParams();
   const q0 = params.get("q") ?? ""; // 홈 검색에서 ?q= 로 넘어온 검색어
-  const [mode, setMode] = useState<Mode>(q0 ? "summary" : "entry");
+  const cat0 = params.get("cat"); // GNB 환경/사회/지배구조 메뉴
+  const col0 = params.get("col") ?? undefined; // 지표 선택 → 그 컬럼(지표) 표
+  const cat0Valid = cat0 && CAT_SET.has(cat0) ? (cat0 as Category) : undefined;
+  const [mode, setMode] = useState<Mode>(
+    cat0Valid || col0 ? "table" : q0 ? "summary" : "entry",
+  );
   const [query, setQuery] = useState(q0);
-  const [input, setInput] = useState(q0);
   const [plan, setPlan] = useState<ViewerPlan>("member");
 
   // 표 진입 컨텍스트
-  const [tableColumnId, setTableColumnId] = useState<string | undefined>();
+  const [tableColumnId, setTableColumnId] = useState<string | undefined>(col0);
+  const [tableCategory, setTableCategory] = useState<Category | undefined>(cat0Valid);
   const [companyIds, setCompanyIds] = useState<string[] | undefined>();
 
   // 모달
-  const [portfolioOpen, setPortfolioOpen] = useState(false);
-  const [portfolioText, setPortfolioText] = useState("");
   const [loginOpen, setLoginOpen] = useState(false);
+
+  // URL 쿼리(GNB·홈검색·지표선택)가 바뀌면 동기화 — 같은 라우트라 remount가 없으므로 effect로 반영
+  const searchKey = params.toString();
+  useEffect(() => {
+    const cat = params.get("cat");
+    const col = params.get("col");
+    const q = params.get("q");
+    if (cat && CAT_SET.has(cat)) {
+      setTableCategory(cat as Category);
+      setTableColumnId(undefined);
+      setCompanyIds(undefined);
+      setMode("table");
+    } else if (col) {
+      setTableColumnId(col);
+      setTableCategory(undefined);
+      setCompanyIds(undefined);
+      setMode("table");
+    } else if (q) {
+      setQuery(q);
+      setMode("summary");
+    } else {
+      setMode("entry");
+      setQuery("");
+      setTableCategory(undefined);
+      setTableColumnId(undefined);
+      setCompanyIds(undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchKey]);
 
   function runText(q: string) {
     if (!q.trim()) return;
     setQuery(q);
-    setInput(q);
     setMode("summary");
   }
   function openTable(indicatorId?: string) {
-    if (indicatorId) setTableColumnId(indicatorId);
-    setMode("table");
-  }
-  function applyPortfolio() {
-    const codes = portfolioText.split(/[\s,;]+/).map((s) => s.trim()).filter((s) => /^\d{6}$/.test(s));
-    setCompanyIds(codes.length > 0 ? codes : undefined);
-    setPortfolioOpen(false);
+    setTableCategory(undefined); // 요약→표는 전 분류
+    setTableColumnId(indicatorId);
     setMode("table");
   }
 
+  // 와이드에서 항상 우측 레일 노출 (표 화면 포함 — 표는 가로 스크롤)
+  const showRail = bp === "wide";
+  const colLabel = tableColumnId
+    ? getIndicatorColumns().find((c) => c.id === tableColumnId)?.label
+    : undefined;
+
   return (
     <main style={{ minHeight: "100vh", background: colors.bgPage }}>
-      <div style={{ maxWidth: layout.contentMaxWidth, margin: "0 auto", padding: "28px 20px 80px" }}>
+      <div
+        style={{
+          maxWidth: showRail ? layout.wideMaxWidth : layout.contentMaxWidth,
+          margin: "0 auto",
+          padding: "28px 20px 80px",
+          display: showRail ? "flex" : "block",
+          gap: 24,
+          alignItems: "flex-start",
+        }}
+      >
+        <div style={{ flex: showRail ? 1 : undefined, minWidth: 0 }}>
         {/* 상단 타이틀 + 플랜 */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: colors.textBase }}>조건 검색</h1>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 14,
+            flexWrap: "wrap",
+          }}
+        >
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: colors.textBase }}></h1>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 13, color: colors.textSub }}>조회 플랜</span>
             <Segmented
               size="small"
               value={plan}
               onChange={(v) => setPlan(v as ViewerPlan)}
-              options={(["guest", "member", "enterprise"] as ViewerPlan[]).map((p) => ({ value: p, label: PLAN_LABELS[p] }))}
+              options={(["guest", "member", "enterprise"] as ViewerPlan[]).map((p) => ({
+                value: p,
+                label: PLAN_LABELS[p],
+              }))}
             />
           </div>
         </div>
 
-        {/* 검색 전: 검색 도우미(큰 검색창) / 검색 후: 상시 컴팩트 검색창 + 결과 */}
+        {/* 검색 전: 검색 도우미(큰 검색창) / 검색 후: 상시 검색창 + 결과 */}
         {mode === "entry" ? (
-          <SearchEntry
-            value={input}
-            onChange={setInput}
-            onSubmit={() => runText(input)}
-            onKeyword={(term) => runText(term)}
-          />
+          <SearchEntry onKeyword={(term) => runText(term)} />
         ) : (
           <>
-            <Input
-              size="large"
-              prefix={<SearchOutlined style={{ color: colors.textHint }} />}
-              placeholder="기업명·종목코드 또는 지표를 검색하세요"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onPressEnter={() => runText(input)}
-              allowClear
-              style={{ marginBottom: 4 }}
-            />
+            <SearchWidget maxWidth={9999} />
             <div style={{ fontSize: 12.5, color: colors.textHint, margin: "8px 2px 0" }}>
-              "{query}" 결과 ·{" "}
-              <a style={{ color: colors.primary }} onClick={() => { setMode("entry"); setQuery(""); setInput(""); setCompanyIds(undefined); }}>
+              {tableCategory
+                ? `${categoryColors[tableCategory].name} 지표`
+                : tableColumnId
+                  ? colLabel ?? "지표 조회"
+                  : `"${query}" 결과`}{" "}
+              ·{" "}
+              <a
+                style={{ color: colors.primary }}
+                onClick={() => {
+                  setMode("entry");
+                  setQuery("");
+                  setCompanyIds(undefined);
+                  setTableCategory(undefined);
+                  setTableColumnId(undefined);
+                }}
+              >
                 검색 초기화
               </a>
             </div>
 
             <div style={{ marginTop: 18 }}>
               {mode === "summary" && (
-                <ResultsSummary query={query} onOpenCompany={(id) => navigate(`/company/${id}`)} onOpenTable={openTable} />
+                <ResultsSummary
+                  query={query}
+                  onOpenCompany={(id) => navigate(`/company/${id}`)}
+                  onOpenTable={openTable}
+                />
               )}
               {mode === "table" && (
                 <ConditionTable
+                  key={tableCategory ?? "all"}
                   plan={plan}
                   initialColumnId={tableColumnId}
+                  initialCategory={tableCategory}
                   companyIds={companyIds}
                   onCompanyOpen={(id) => navigate(`/company/${id}`)}
-                  onPortfolio={() => setPortfolioOpen(true)}
                   onUpgrade={() => setLoginOpen(true)}
-                  onClearPortfolio={() => setCompanyIds(undefined)}
+                  onSetCompanyIds={setCompanyIds}
                 />
               )}
             </div>
           </>
         )}
-      </div>
+        </div>
 
-      {/* 포트폴리오 일괄 입력 */}
-      <Modal
-        open={portfolioOpen}
-        onCancel={() => setPortfolioOpen(false)}
-        onOk={applyPortfolio}
-        okText="조회"
-        cancelText="취소"
-        title="포트폴리오 일괄 조회"
-        centered
-      >
-        <p style={{ fontSize: 13, color: colors.textSub, marginTop: 0 }}>종목코드(6자리)를 줄바꿈·쉼표로 구분해 붙여넣으세요.</p>
-        <Input.TextArea rows={6} value={portfolioText} onChange={(e) => setPortfolioText(e.target.value)} placeholder={"005930\n000660\n035420"} />
-      </Modal>
+        {showRail && (
+          <aside style={{ width: 300, flexShrink: 0, position: "sticky", top: 84 }}>
+            <RightRail plan={plan} onLogin={() => setLoginOpen(true)} />
+          </aside>
+        )}
+      </div>
 
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </main>

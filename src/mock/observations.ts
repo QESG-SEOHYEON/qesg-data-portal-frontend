@@ -5,7 +5,7 @@ import type { Observation, SourceCode } from "@/types";
 import { COMPANIES } from "./companies";
 import { INDICATORS } from "./indicators";
 
-export const YEARS = [2021, 2022, 2023, 2024];
+export const YEARS = [2022, 2023, 2024, 2025];
 
 // 카테고리별 대표 출처(목업 단순화). 실제로는 지표별 출처가 다양.
 const SOURCE_BY_CATEGORY: Record<string, SourceCode> = {

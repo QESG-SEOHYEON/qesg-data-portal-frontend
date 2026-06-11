@@ -42,3 +42,13 @@ export const PLAN_LABELS: Record<ViewerPlan, string> = {
   member: "개인 회원",
   enterprise: "기업 회원",
 };
+
+// 표(컬럼=지표) 동시 조회 한도 — 초과 시 업그레이드 유도 (가안)
+export const COLUMN_LIMIT: Record<ViewerPlan, number> = {
+  guest: 4,
+  member: 10,
+  enterprise: Infinity,
+};
+export function columnLimitOf(plan: ViewerPlan): number {
+  return COLUMN_LIMIT[plan];
+}

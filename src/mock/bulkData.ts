@@ -6,8 +6,8 @@ import { CATALOG_RAW } from "./catalogData";
 import type { CatalogRaw } from "./catalogData";
 import { COMPANIES } from "./companies";
 
-export const BULK_LATEST_YEAR = 2024;
-export const BULK_YEARS = [2021, 2022, 2023, 2024];
+export const BULK_LATEST_YEAR = 2025;
+export const BULK_YEARS = [2022, 2023, 2024, 2025];
 
 export const SECTORS = [
   "반도체",
