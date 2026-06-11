@@ -6,25 +6,26 @@
 //  - 데스크톱: 최근업데이트 ↔ 출처현황 가로 2단
 //  - 와이드(≥1280): 우측 sticky 레일에 최근업데이트(세로) + 가입 CTA 부착
 import { useState } from "react";
-import { Button } from "antd";
+import { Segmented } from "antd";
+import type { ViewerPlan } from "@/types";
+import { PLAN_LABELS } from "@/mock/access";
 import { colors, layout } from "@/theme/tokens";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
-import { getCoverageStats } from "@/mock/landing";
 import { HeroSearch } from "./components/HeroSearch";
 import { DataCatalog } from "./components/DataCatalog";
 import { CompanyDataFeed } from "./components/CompanyDataFeed";
 import { IndustryCompare } from "./components/IndustryCompare";
 import { SectorTrend } from "./components/SectorTrend";
-import { RecentUpdates } from "./components/RecentUpdates";
 import { SrDisclosureStatus } from "./components/SrDisclosureStatus";
 import { EsgNews } from "./components/EsgNews";
 import { SignupCTA } from "./components/SignupCTA";
 import { LoginModal } from "./components/LoginModal";
-import { Footer } from "@/components/Footer";
+import { RightRail } from "@/components/RightRail";
 
 export function LandingPage() {
   const bp = useBreakpoint();
   const [loginOpen, setLoginOpen] = useState(false);
+  const [plan, setPlan] = useState<ViewerPlan>("guest");
   const isMobile = bp === "mobile";
   const isDesktop = bp === "desktop";
   const isWide = bp === "wide";
@@ -34,6 +35,30 @@ export function LandingPage() {
     <main style={{ minHeight: "100vh", background: colors.bgPage }}>
       {/* 1순위 — 항상 (전폭) */}
       <HeroSearch />
+
+      {/* 목업용 조회 플랜 토글 */}
+      <div
+        style={{
+          maxWidth: isWide ? layout.wideMaxWidth : layout.contentMaxWidth,
+          margin: "0 auto",
+          padding: "16px 20px 0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: 8,
+        }}
+      >
+        <span style={{ fontSize: 13, color: colors.textSub }}>조회 플랜</span>
+        <Segmented
+          size="small"
+          value={plan}
+          onChange={(v) => setPlan(v as ViewerPlan)}
+          options={(["guest", "member", "enterprise"] as ViewerPlan[]).map((p) => ({
+            value: p,
+            label: PLAN_LABELS[p],
+          }))}
+        />
+      </div>
 
       {isWide ? (
         /* 와이드: 본문(좌) + sticky 레일(우) */
@@ -60,15 +85,11 @@ export function LandingPage() {
               width: 300,
               flexShrink: 0,
               position: "sticky",
-              top: 72,
+              top: 84,
               padding: "44px 20px 0 0",
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
             }}
           >
-            <RecentUpdates embedded />
-            <RailSignupCard onClick={() => setLoginOpen(true)} />
+            <RightRail plan={plan} onLogin={() => setLoginOpen(true)} />
           </aside>
         </div>
       ) : (
@@ -85,9 +106,6 @@ export function LandingPage() {
           <SignupCTA />
         </>
       )}
-
-      {/* 사이트 하단 푸터 (전폭) */}
-      <Footer />
 
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </main>
@@ -110,30 +128,5 @@ function IndustrySectorPair({ stack = false }: { stack?: boolean }) {
         <SectorTrend embedded />
       </div>
     </section>
-  );
-}
-
-// 우측 레일 가입 유도 미니 카드 (와이드 전용)
-function RailSignupCard({ onClick }: { onClick: () => void }) {
-  const total = getCoverageStats().indicators;
-  return (
-    <div
-      style={{
-        background: colors.bgSurface,
-        border: `1px solid ${colors.border}`,
-        borderRadius: 12,
-        padding: 16,
-      }}
-    >
-      <div style={{ fontSize: 14, fontWeight: 700, color: colors.textBase }}>
-        전체 {total}개 지표 열람
-      </div>
-      <div style={{ fontSize: 12.5, color: colors.textSub, margin: "6px 0 12px", lineHeight: 1.5 }}>
-        기업별 상세·다개년 추이까지 로그인 후 모두 확인하세요
-      </div>
-      <Button type="primary" block onClick={onClick}>
-        로그인 / 회원가입
-      </Button>
-    </div>
   );
 }

@@ -2,14 +2,18 @@
 // 헤더 → ESG 다타입 테이블(추이 아코디언) → AI 질의 → 공시원문 → 유사기업
 // 잠금은 플랜 셀렉터(access.ts tier). 평가·등급·전망 없음.
 // ⚠️ 출처(데이터 소스) 표시는 사내 정책 확정 전까지 화면에서 끔 — 데이터/TrustBlock 컴포넌트는 유지, 렌더만 생략.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Segmented, Button, Empty } from "antd";
-import { ArrowLeftOutlined, HeartOutlined } from "@ant-design/icons";
+import { HeartOutlined } from "@ant-design/icons";
 import type { Category, ViewerPlan } from "@/types";
-import { getCompanyDetail } from "@/mock/companyDetail";
+import { getCompanyDetail, getCompanyCardMeta } from "@/mock/companyDetail";
+import { pushRecentView } from "@/mock/recentViews";
 import { PLAN_LABELS } from "@/mock/access";
 import { colors, categoryColors, layout } from "@/theme/tokens";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { RightRail } from "@/components/RightRail";
+import { LoginModal } from "@/pages/landing/components/LoginModal";
 import { EsgIndicatorTable } from "./components/EsgIndicatorTable";
 import { AskAboutCompany } from "./components/AskAboutCompany";
 import { DisclosureSources } from "./components/DisclosureSources";
@@ -20,10 +24,17 @@ const PLANS: ViewerPlan[] = ["guest", "member", "enterprise"];
 
 export function CompanyDetailPage() {
   const { companyId = "" } = useParams();
+  const bp = useBreakpoint();
   const [plan, setPlan] = useState<ViewerPlan>("member");
   const [tab, setTab] = useState<Category>("E");
+  const [loginOpen, setLoginOpen] = useState(false);
 
   const detail = useMemo(() => getCompanyDetail(companyId, plan), [companyId, plan]);
+
+  // 최근 조회 이력 기록 (오른쪽 레일에서 사용)
+  useEffect(() => {
+    if (detail) pushRecentView({ id: detail.id, name: detail.name });
+  }, [detail?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!detail) {
     return (
@@ -35,14 +46,22 @@ export function CompanyDetailPage() {
     );
   }
 
-  return (
-    <Page>
-      <Link to="/" style={{ fontSize: 13, color: colors.textSub, display: "inline-flex", gap: 6, alignItems: "center" }}>
-        <ArrowLeftOutlined /> 검색
-      </Link>
+  const showRail = bp === "wide";
 
+  return (
+    <Page
+      rail={showRail ? <RightRail plan={plan} onLogin={() => setLoginOpen(true)} /> : undefined}
+    >
       {/* ── 헤더 ── */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 14, margin: "12px 0 20px", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 14,
+          margin: "12px 0 20px",
+          flexWrap: "wrap",
+        }}
+      >
         <div
           style={{
             width: 48,
@@ -62,11 +81,26 @@ export function CompanyDetailPage() {
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: colors.textBase }}>{detail.name}</h1>
-            <span style={{ fontSize: 14, color: colors.textSub, fontVariantNumeric: "tabular-nums" }}>{detail.id}</span>
+            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: colors.textBase }}>
+              {detail.name}
+            </h1>
+            <span
+              style={{ fontSize: 14, color: colors.textSub, fontVariantNumeric: "tabular-nums" }}
+            >
+              {detail.id}
+            </span>
           </div>
           <div style={{ fontSize: 12.5, color: colors.textHint, marginTop: 4 }}>
-            {detail.industry} · {detail.market} · {detail.size} · 결산 {detail.fiscalMonth}
+            {[
+              detail.industry,
+              detail.market,
+              detail.size,
+              getCompanyCardMeta(detail.id).srPublished
+                ? `FY${detail.baseYear} 지속가능경영보고서 공시`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </div>
         </div>
         <Button icon={<HeartOutlined />} onClick={() => console.log("save-company")}>
@@ -86,7 +120,14 @@ export function CompanyDetailPage() {
       </div>
 
       {/* ── ESG 데이터 (다타입 테이블) ── */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: `1px solid ${colors.border}` }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginBottom: 16,
+          borderBottom: `1px solid ${colors.border}`,
+        }}
+      >
         {CATEGORIES.map((c) => {
           const meta = categoryColors[c];
           const isActive = tab === c;
@@ -127,7 +168,14 @@ export function CompanyDetailPage() {
         })}
       </div>
 
-      <div style={{ background: colors.bgSurface, border: `1px solid ${colors.border}`, borderRadius: 12, padding: "4px 14px" }}>
+      <div
+        style={{
+          background: colors.bgSurface,
+          border: `1px solid ${colors.border}`,
+          borderRadius: 12,
+          padding: "4px 14px",
+        }}
+      >
         <EsgIndicatorTable
           rows={detail.indicators[tab]}
           trend={detail.trend}
@@ -135,7 +183,7 @@ export function CompanyDetailPage() {
         />
       </div>
       <div style={{ marginTop: 10, fontSize: 11.5, color: colors.textHint }}>
-        0값은 미공개로 처리됩니다. 공시 연도는 {detail.baseYear}년 기준입니다.
+        공시 연도는 {detail.baseYear}년 기준입니다.
       </div>
 
       {/* ── AI 질의 ── */}
@@ -146,14 +194,30 @@ export function CompanyDetailPage() {
 
       {/* ── 유사 기업 ── */}
       <SimilarCompanies detail={detail} />
+
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </Page>
   );
 }
 
-function Page({ children }: { children: React.ReactNode }) {
+function Page({ children, rail }: { children: React.ReactNode; rail?: React.ReactNode }) {
   return (
     <main style={{ minHeight: "100vh", background: colors.bgPage }}>
-      <div style={{ maxWidth: layout.contentMaxWidth, margin: "0 auto", padding: "32px 20px 80px" }}>{children}</div>
+      <div
+        style={{
+          maxWidth: rail ? layout.wideMaxWidth : layout.contentMaxWidth,
+          margin: "0 auto",
+          padding: "32px 20px 80px",
+          display: rail ? "flex" : "block",
+          gap: 24,
+          alignItems: "flex-start",
+        }}
+      >
+        <div style={{ flex: rail ? 1 : undefined, minWidth: 0 }}>{children}</div>
+        {rail && (
+          <aside style={{ width: 300, flexShrink: 0, position: "sticky", top: 84 }}>{rail}</aside>
+        )}
+      </div>
     </main>
   );
 }
