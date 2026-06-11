@@ -24,7 +24,13 @@ import {
 import type { IndicatorRow } from "@/mock/indicatorSearch";
 import { BULK_COMPANIES } from "@/mock/bulkData";
 import { getSanctionCounts } from "@/mock/sanctions";
-import { getPortfolios, getSavedWork, getSavedWorks, saveWorkspace, addDownload } from "@/mock/workspace";
+import {
+  getPortfolios,
+  getSavedWork,
+  getSavedWorks,
+  saveWorkspace,
+  addDownload,
+} from "@/mock/workspace";
 import type { WsOp } from "@/mock/workspace";
 import { searchMock } from "@/mock/search";
 import { PLAN_ORDER, PLAN_LABELS } from "@/mock/access";
@@ -236,8 +242,11 @@ export function WorkspacePage() {
     if (rows.length === 0) return;
     const d = new Date();
     const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-    addDownload(`워크스페이스_${rows.length}곳_${indicatorIds.length}지표_${stamp}.${kind === "Excel" ? "xlsx" : "json"}`, kind);
-    message.success(`${kind} 다운로드 — 마이 포트폴리오 이력에 저장됐어요`);
+    addDownload(
+      `워크스페이스_${rows.length}곳_${indicatorIds.length}지표_${stamp}.${kind === "Excel" ? "xlsx" : "json"}`,
+      kind,
+    );
+    message.success(`${kind} 다운로드 — 내 포트폴리오 이력에 저장됐어요`);
   }
   function restoreWork(id: string) {
     const w = getSavedWork(id);
@@ -303,7 +312,11 @@ export function WorkspacePage() {
               </Button>
             </Tooltip>
             <Tooltip title={rows.length === 0 ? "표에 데이터가 있을 때 받을 수 있어요" : ""}>
-              <Button icon={<ApiOutlined />} disabled={rows.length === 0} onClick={() => doDownload("API")} />
+              <Button
+                icon={<ApiOutlined />}
+                disabled={rows.length === 0}
+                onClick={() => doDownload("API")}
+              />
             </Tooltip>
             <Button
               type={aiOpen ? "primary" : "default"}
@@ -499,7 +512,12 @@ export function WorkspacePage() {
                   접기 ▶
                 </a>
               </div>
-              <AiPanel onApplyOp={applyOp} onChartData={chartData} companyCount={rows.length} admin={admin} />
+              <AiPanel
+                onApplyOp={applyOp}
+                onChartData={chartData}
+                companyCount={rows.length}
+                admin={admin}
+              />
             </div>
           ) : (
             <button
