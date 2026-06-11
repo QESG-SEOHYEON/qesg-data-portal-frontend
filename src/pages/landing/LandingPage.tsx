@@ -2,7 +2,7 @@
 // 반응형 우선순위 (스펙 8장):
 //  - 1순위 항상 노출: 검색 · 커버리지 · 카탈로그 (+ 가입 CTA)
 //  - 2순위 좁으면 접기: 산업비교 · 공시율 · 기업 데이터 피드 (모바일 숨김)
-//  - 3순위 먼저 축소/숨김: 섹터트렌드(데스크톱+) · 최근업데이트 · 출처현황(모바일 숨김)
+//  - 3순위 먼저 축소/숨김: 업종트렌드(데스크톱+) · 최근업데이트 · 출처현황(모바일 숨김)
 //  - 데스크톱: 최근업데이트 ↔ 출처현황 가로 2단
 //  - 와이드(≥1280): 우측 sticky 레일에 최근업데이트(세로) + 가입 CTA 부착
 import { useState } from "react";
@@ -97,7 +97,7 @@ export function LandingPage() {
           <DataCatalog />
           {/* 항상 노출(모바일 포함): 기업 ESG 데이터 · 산업군 데이터 · ESG 뉴스 */}
           <CompanyDataFeed />
-          {/* 산업군 데이터 + 섹터 트렌드: 데스크톱 2단 / 태블릿·모바일은 세로로 쌓음 */}
+          {/* 산업군 데이터 + 업종 트렌드: 데스크톱 2단 / 태블릿·모바일은 세로로 쌓음 */}
           <IndustrySectorPair stack={!isDesktop} />
           <EsgNews />
           {/* 최근 업데이트는 와이드 우측 레일 전용 → 여기선 SR 공시 현황만 */}
@@ -112,7 +112,7 @@ export function LandingPage() {
   );
 }
 
-// 산업군 데이터 + 섹터 트렌드. 넓으면 가로 2단, 좁으면(stack) 섹터 트렌드를 아래로 쌓음.
+// 산업군 데이터 + 업종 트렌드. 넓으면 가로 2단, 좁으면(stack) 업종 트렌드를 아래로 쌓음.
 function IndustrySectorPair({ stack = false }: { stack?: boolean }) {
   return (
     <section style={{ maxWidth: layout.contentMaxWidth, margin: "0 auto", padding: "44px 20px" }}>
