@@ -7,6 +7,18 @@ body {
   font-size: 15px;
 }
 
+/* AI 패널 메시지/단계 등장 */
+@keyframes aiFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* 키워드 칩 회전(위로 넘기듯) */
 @keyframes kwSlide {
   from {

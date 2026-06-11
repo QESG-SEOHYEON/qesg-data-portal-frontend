@@ -22,9 +22,8 @@ const SEARCH_ITEMS: MenuProps["items"] = [
   { key: "soon:disclosure", label: "공시 정보" },
 ];
 const WORKSPACE_ITEMS: MenuProps["items"] = [
-  { key: "soon:ai", label: "AI 분석" },
-  { key: "soon:compare", label: "기업 비교하기" },
-  { key: "soon:portfolio", label: "마이 포트폴리오" },
+  { key: "/workspace", label: "데이터 작업공간" },
+  { key: "/portfolio", label: "내 포트폴리오" },
 ];
 
 export function AppHeader() {
