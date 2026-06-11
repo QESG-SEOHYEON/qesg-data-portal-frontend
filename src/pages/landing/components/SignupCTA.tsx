@@ -18,10 +18,10 @@ export function SignupCTA() {
       >
         {/* 로그인하면 요금제 안내 배너로 바뀌게 해야지 */}
         <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#fff" }}>
-          (큐뎁 서비스명)으로 모든 ESG 정보를 확인해보십쇼...
+          가입 후 기업의 모든 ESG 정보를 확인해보십쇼...
         </h2>
         <p style={{ margin: "10px 0 24px", fontSize: 14, color: "rgba(255,255,255,0.85)" }}>
-          개인 회원은 단건 상세를, 플랜 회원은 대량 조회·Excel·API까지 이용할 수 있습니다
+          국내 유일 ESG 데이터 포털 (큐뎁서비스명)의 정보를 이용하십쇼...
         </p>
         <Button
           size="large"

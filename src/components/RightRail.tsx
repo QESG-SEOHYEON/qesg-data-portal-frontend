@@ -2,13 +2,22 @@
 // 상단: 최근 조회 이력 / 하단: 플랜별 CTA(비로그인→로그인 유도, 회원→AI 데이터 분석 유도)
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Button, App } from "antd";
+import { Button, App, Segmented } from "antd";
 import { RightOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import type { ViewerPlan } from "@/types";
 import { getRecentViews, subscribeRecentViews } from "@/mock/recentViews";
+import { PLAN_ORDER, PLAN_LABELS } from "@/mock/access";
 import { colors } from "@/theme/tokens";
 
-export function RightRail({ plan, onLogin }: { plan: ViewerPlan; onLogin: () => void }) {
+export function RightRail({
+  plan,
+  onPlanChange,
+  onLogin,
+}: {
+  plan: ViewerPlan;
+  onPlanChange?: (p: ViewerPlan) => void;
+  onLogin: () => void;
+}) {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const [recent, setRecent] = useState(getRecentViews);
@@ -18,6 +27,21 @@ export function RightRail({ plan, onLogin }: { plan: ViewerPlan; onLogin: () => 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* 조회 플랜(회원 등급) 토글 — 데모용 */}
+      {onPlanChange && (
+        <div style={{ background: colors.bgSurface, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: colors.textSub, marginBottom: 8 }}>조회 플랜</div>
+          <Segmented
+            size="small"
+            block
+            vertical
+            value={plan}
+            onChange={(v) => onPlanChange(v as ViewerPlan)}
+            options={PLAN_ORDER.map((p) => ({ value: p, label: PLAN_LABELS[p] }))}
+          />
+        </div>
+      )}
+
       {/* 최근 조회 이력 */}
       <div style={{ background: colors.bgSurface, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 16 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: colors.textBase, marginBottom: 12 }}>최근 조회 이력</div>

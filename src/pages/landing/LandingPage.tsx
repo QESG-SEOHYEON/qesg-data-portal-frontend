@@ -6,9 +6,7 @@
 //  - 데스크톱: 최근업데이트 ↔ 출처현황 가로 2단
 //  - 와이드(≥1280): 우측 sticky 레일에 최근업데이트(세로) + 가입 CTA 부착
 import { useState } from "react";
-import { Segmented } from "antd";
 import type { ViewerPlan } from "@/types";
-import { PLAN_LABELS } from "@/mock/access";
 import { colors, layout } from "@/theme/tokens";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { HeroSearch } from "./components/HeroSearch";
@@ -35,30 +33,6 @@ export function LandingPage() {
     <main style={{ minHeight: "100vh", background: colors.bgPage }}>
       {/* 1순위 — 항상 (전폭) */}
       <HeroSearch />
-
-      {/* 목업용 조회 플랜 토글 */}
-      <div
-        style={{
-          maxWidth: isWide ? layout.wideMaxWidth : layout.contentMaxWidth,
-          margin: "0 auto",
-          padding: "16px 20px 0",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          gap: 8,
-        }}
-      >
-        <span style={{ fontSize: 13, color: colors.textSub }}>조회 플랜</span>
-        <Segmented
-          size="small"
-          value={plan}
-          onChange={(v) => setPlan(v as ViewerPlan)}
-          options={(["guest", "member", "enterprise"] as ViewerPlan[]).map((p) => ({
-            value: p,
-            label: PLAN_LABELS[p],
-          }))}
-        />
-      </div>
 
       {isWide ? (
         /* 와이드: 본문(좌) + sticky 레일(우) */
@@ -89,7 +63,7 @@ export function LandingPage() {
               padding: "44px 20px 0 0",
             }}
           >
-            <RightRail plan={plan} onLogin={() => setLoginOpen(true)} />
+            <RightRail plan={plan} onPlanChange={setPlan} onLogin={() => setLoginOpen(true)} />
           </aside>
         </div>
       ) : (

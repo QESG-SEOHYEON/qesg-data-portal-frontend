@@ -10,8 +10,8 @@ export type SearchScope = "all" | "company" | "indicator";
 // ── 과금/권한 경계 (기획안 5.2 출처 기준 + 단일 권한 레이어) ──
 /** 데이터 포인트 1건의 과금 티어. 출처+다개년 규칙으로 결정(데이터 속성) */
 export type Tier = "free" | "basic" | "enterprise";
-/** 조회자 플랜. 접근 가능한 tier 집합을 결정 */
-export type ViewerPlan = "guest" | "member" | "enterprise";
+/** 조회자 플랜(회원 등급). 접근 가능한 tier 집합을 결정 */
+export type ViewerPlan = "guest" | "member" | "memberPlan" | "enterprise" | "admin";
 
 export interface IndicatorItem {
   type: "indicator";

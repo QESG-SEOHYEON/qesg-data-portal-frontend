@@ -3,9 +3,7 @@
 // 잠금은 플랜 셀렉터(access.ts). 종합점수·등급·순위 없음(안전선).
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { Segmented } from "antd";
 import type { Category, ViewerPlan } from "@/types";
-import { PLAN_LABELS } from "@/mock/access";
 import { colors, categoryColors, layout } from "@/theme/tokens";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { RightRail } from "@/components/RightRail";
@@ -125,32 +123,6 @@ export function ConditionSearchPage() {
         }}
       >
         <div style={{ flex: showRail ? 1 : undefined, minWidth: 0 }}>
-        {/* 상단 타이틀 + 플랜 */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            marginBottom: 14,
-            flexWrap: "wrap",
-          }}
-        >
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: colors.textBase }}></h1>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 13, color: colors.textSub }}>조회 플랜</span>
-            <Segmented
-              size="small"
-              value={plan}
-              onChange={(v) => setPlan(v as ViewerPlan)}
-              options={(["guest", "member", "enterprise"] as ViewerPlan[]).map((p) => ({
-                value: p,
-                label: PLAN_LABELS[p],
-              }))}
-            />
-          </div>
-        </div>
-
         {/* 검색 전: 검색 도우미(큰 검색창) / 검색 후: 상시 검색창 + 결과 */}
         {mode === "entry" ? (
           <SearchEntry onKeyword={(term) => runText(term)} />
@@ -212,7 +184,7 @@ export function ConditionSearchPage() {
 
         {showRail && (
           <aside style={{ width: 300, flexShrink: 0, position: "sticky", top: 84 }}>
-            <RightRail plan={plan} onLogin={() => setLoginOpen(true)} />
+            <RightRail plan={plan} onPlanChange={setPlan} onLogin={() => setLoginOpen(true)} />
           </aside>
         )}
       </div>

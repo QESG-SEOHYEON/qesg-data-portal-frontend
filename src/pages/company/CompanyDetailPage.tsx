@@ -4,12 +4,11 @@
 // ⚠️ 출처(데이터 소스) 표시는 사내 정책 확정 전까지 화면에서 끔 — 데이터/TrustBlock 컴포넌트는 유지, 렌더만 생략.
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useLocation, useSearchParams, useNavigate } from "react-router";
-import { Segmented, Button, Empty } from "antd";
+import { Button, Empty } from "antd";
 import { HeartOutlined } from "@ant-design/icons";
 import type { Category, ViewerPlan } from "@/types";
 import { getCompanyDetail, getCompanyCardMeta } from "@/mock/companyDetail";
 import { pushRecentView } from "@/mock/recentViews";
-import { PLAN_LABELS } from "@/mock/access";
 import { colors, categoryColors, layout } from "@/theme/tokens";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { RightRail } from "@/components/RightRail";
@@ -21,7 +20,6 @@ import { DisclosureSources } from "./components/DisclosureSources";
 import { SimilarCompanies } from "./components/SimilarCompanies";
 
 const CATEGORIES: Category[] = ["E", "S", "G"];
-const PLANS: ViewerPlan[] = ["guest", "member", "enterprise"];
 
 export function CompanyDetailPage() {
   const { companyId = "" } = useParams();
@@ -71,7 +69,7 @@ export function CompanyDetailPage() {
 
   return (
     <Page
-      rail={showRail ? <RightRail plan={plan} onLogin={() => setLoginOpen(true)} /> : undefined}
+      rail={showRail ? <RightRail plan={plan} onPlanChange={setPlan} onLogin={() => setLoginOpen(true)} /> : undefined}
     >
       {/* ── 헤더 ── */}
       <div
@@ -127,17 +125,6 @@ export function CompanyDetailPage() {
         <Button icon={<HeartOutlined />} onClick={() => console.log("save-company")}>
           관심기업 저장
         </Button>
-      </div>
-
-      {/* 플랜 셀렉터 (잠금 데모) */}
-      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
-        <span style={{ fontSize: 13, color: colors.textSub }}>조회 플랜</span>
-        <Segmented
-          size="small"
-          value={plan}
-          onChange={(v) => setPlan(v as ViewerPlan)}
-          options={PLANS.map((p) => ({ value: p, label: PLAN_LABELS[p] }))}
-        />
       </div>
 
       {/* ── ESG 데이터 (다타입 테이블) ── */}
