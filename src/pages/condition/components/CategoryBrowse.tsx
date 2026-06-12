@@ -135,7 +135,7 @@ export function CategoryBrowse() {
                             padding: "5px 4px",
                           }}
                         >
-                          조회 →
+                          이 테마로 조회 →
                         </button>
                       </div>
                     )}

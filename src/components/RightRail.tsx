@@ -2,7 +2,7 @@
 // 상단: 최근 조회 이력 / 하단: 플랜별 CTA(비로그인→로그인 유도, 회원→AI 데이터 분석 유도)
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Button, App, Segmented } from "antd";
+import { Button, Segmented } from "antd";
 import { RightOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import type { ViewerPlan } from "@/types";
 import { getRecentViews, subscribeRecentViews } from "@/mock/recentViews";
@@ -19,7 +19,6 @@ export function RightRail({
   onLogin: () => void;
 }) {
   const navigate = useNavigate();
-  const { message } = App.useApp();
   const [recent, setRecent] = useState(getRecentViews);
   // 페이지 진입 시 pushRecentView → 즉시 반영
   useEffect(() => subscribeRecentViews(() => setRecent([...getRecentViews()])), []);
@@ -91,7 +90,7 @@ export function RightRail({
           <div style={{ fontSize: 12.5, color: colors.textSub, lineHeight: 1.5, marginBottom: 12 }}>
             자연어로 묻고 표·차트로 답받기. 여러 기업·지표를 한 번에 분석하세요.
           </div>
-          <Button type="primary" block style={{ background: colors.accent, borderColor: colors.accent }} onClick={() => message.info("준비 중입니다")}>
+          <Button type="primary" block style={{ background: colors.accent, borderColor: colors.accent }} onClick={() => navigate("/workspace")}>
             AI로 질의하기 <RightOutlined />
           </Button>
         </div>

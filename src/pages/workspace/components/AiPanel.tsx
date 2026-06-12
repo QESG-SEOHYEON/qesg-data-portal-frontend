@@ -1,7 +1,7 @@
 // AI 대화 패널 — 테이블을 자연어로 조작. 답이 텍스트가 아니라 "테이블 변화 + 근거".
 // 목업: 정해진 4개 시나리오(A~D)만 반응. 함수 호출=모노 태그, RAG=근거 카드.
 // ⚠️ 평가/순위/점수 함수 없음 → 평가성 질의(D)는 데이터 우회.
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input, App } from "antd";
 import { SendOutlined, RightOutlined, LinkOutlined, FunctionOutlined, FileSearchOutlined, BarChartOutlined, LoadingOutlined, CheckOutlined } from "@ant-design/icons";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, CartesianGrid } from "recharts";
@@ -32,11 +32,13 @@ export function AiPanel({
   onChartData,
   companyCount = 0,
   admin = false,
+  autoQuery,
 }: {
   onApplyOp: (op: WsOp) => void;
   onChartData?: (code: string) => { name: string; value: number }[];
   companyCount?: number;
   admin?: boolean; // 어드민 모드 — 함수 호출 그대로 노출
+  autoQuery?: string; // 검색에서 핸드오프된 질문 — 진입 시 자동 실행
 }) {
   const { message } = App.useApp();
   const [entries, setEntries] = useState<Entry[]>([
@@ -44,7 +46,19 @@ export function AiPanel({
   ]);
   const [input, setInput] = useState("");
   const [running, setRunning] = useState(false);
+  const [thinking, setThinking] = useState(false); // 질문 전송 후 답변 준비 중
   const scrollRef = useRef<HTMLDivElement>(null);
+  const autoRan = useRef(false);
+
+  // 검색/기업 상세에서 핸드오프된 질문 — 진입 시 자동 실행(1회)
+  // StrictMode 이중 호출에도 한 번만 실행되도록 cleanup으로 타임아웃을 지우지 않음(autoRan 가드)
+  useEffect(() => {
+    if (autoQuery && autoQuery.trim() && !autoRan.current) {
+      autoRan.current = true;
+      setTimeout(() => submit(autoQuery), 500);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoQuery]);
 
   const push = (e: Entry) => {
     setEntries((prev) => [...prev, e]);
@@ -54,10 +68,12 @@ export function AiPanel({
   function play(query: string, steps: WsStep[]) {
     if (running) return;
     setRunning(true);
+    setThinking(true); // 질문 전송됨 → 답변 준비 중
     push({ kind: "user", text: query });
     steps.forEach((step, i) => {
       setTimeout(
         () => {
+          if (i === 0) setThinking(false); // 첫 단계 등장 → 준비 종료
           if (step.kind === "fn" && step.tag) push({ kind: "step", tag: step.tag, say: step.say ?? step.tag, pending: true });
           else if (step.kind === "rag" && step.card) push({ kind: "rag", tag: step.tag ?? "RAG", card: step.card });
           else if (step.kind === "chart" && step.chart)
@@ -131,6 +147,13 @@ export function AiPanel({
         {entries.map((e, i) => (
           <EntryView key={i} e={e} admin={admin} onLink={() => message.info("원문 링크(목업)")} onChartData={onChartData} />
         ))}
+        {thinking && (
+          <div style={{ ...fade, display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: colors.textSub }}>
+            <span style={{ color: colors.accent }}>✦</span>
+            <span>답변 준비 중</span>
+            <LoadingOutlined style={{ fontSize: 12, color: colors.textHint }} />
+          </div>
+        )}
       </div>
 
       {/* 예시 칩 */}

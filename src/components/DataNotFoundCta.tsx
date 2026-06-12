@@ -1,10 +1,12 @@
 // "원하는 데이터가 보이지 않나요?" — AI 우선(데이터 찾기) + 문의 보조(미수집 데이터 요청)
 // AI 워크벤치·문의 페이지 준비 전까지 '준비 중' 토스트로 연결.
 import { Button, App } from "antd";
+import { useNavigate } from "react-router";
 import { colors } from "@/theme/tokens";
 
-export function DataNotFoundCta({ compact = false }: { compact?: boolean }) {
+export function DataNotFoundCta({ compact = false, query }: { compact?: boolean; query?: string }) {
   const { message } = App.useApp();
+  const navigate = useNavigate();
   return (
     <div
       style={{
@@ -25,7 +27,9 @@ export function DataNotFoundCta({ compact = false }: { compact?: boolean }) {
         type="primary"
         size="small"
         style={{ background: colors.accent, borderColor: colors.accent }}
-        onClick={() => message.info("준비 중입니다")}
+        onClick={() =>
+          navigate(query ? `/workspace?ai=${encodeURIComponent(query)}` : "/workspace")
+        }
       >
         ✦ AI에게 물어보기
       </Button>
