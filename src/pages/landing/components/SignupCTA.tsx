@@ -1,8 +1,17 @@
 // SignupCTA (랜딩 명세 2.6) — 가입 유도. 회원 유형 분기는 힌트만.
+import { useState } from "react";
 import { Button } from "antd";
+import { usePlan } from "@/mock/planContext";
 import { colors, layout } from "@/theme/tokens";
+import { LoginModal } from "./LoginModal";
+import { PlanModal } from "./PlanModal";
 
 export function SignupCTA() {
+  const [plan] = usePlan();
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const isGuest = plan === "guest";
+
   return (
     <section style={{ padding: "20px 20px 80px" }}>
       <div
@@ -33,12 +42,15 @@ export function SignupCTA() {
             height: 46,
             padding: "0 28px",
           }}
-          // TODO: 로그인하면 플랜 페이지으로 이어지게 해야지
-          onClick={() => console.log("signup")}
+          // 비회원 → 로그인 모달 / 로그인 상태 → 플랜 안내
+          onClick={() => (isGuest ? setLoginOpen(true) : setPlanOpen(true))}
         >
-          로그인하기
+          {isGuest ? "로그인하기" : "플랜 보기"}
         </Button>
       </div>
+
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <PlanModal open={planOpen} onClose={() => setPlanOpen(false)} />
     </section>
   );
 }

@@ -5,12 +5,24 @@ import { Select } from "antd";
 import { LinkOutlined, DownOutlined, RightOutlined } from "@ant-design/icons";
 import { getSanctions, SANCTION_THEMES, themeOf } from "@/mock/sanctions";
 import type { Sanction } from "@/mock/sanctions";
+import type { ViewerPlan } from "@/types";
+import { CAN, lockCta } from "@/mock/accessRules";
+import { Locked } from "@/components/Locked";
 import { colors } from "@/theme/tokens";
 
 const PREVIEW = 8;
 
-export function SanctionSection({ companyId }: { companyId: string }) {
+export function SanctionSection({
+  companyId,
+  tier,
+  onLocked,
+}: {
+  companyId: string;
+  tier: ViewerPlan;
+  onLocked?: () => void;
+}) {
   const all = useMemo(() => getSanctions(companyId), [companyId]);
+  const canDetail = CAN(tier, "sanctionDetail"); // 비회원: 건수만, 상세 잠금
   const [theme, setTheme] = useState<string | undefined>();
   const [penalty, setPenalty] = useState<string | undefined>();
   const [year, setYear] = useState<number | undefined>();
@@ -106,6 +118,16 @@ export function SanctionSection({ companyId }: { companyId: string }) {
             ))}
           </div>
 
+          {!canDetail ? (
+            <Locked cta={lockCta(tier)} onClick={onLocked}>
+              <div style={{ border: `1px solid ${colors.border}`, borderRadius: 8, overflow: "hidden" }}>
+                {all.slice(0, PREVIEW).map((s, i) => (
+                  <SanctionRow key={s.id} s={s} first={i === 0} open={false} onToggle={() => {}} />
+                ))}
+              </div>
+            </Locked>
+          ) : (
+          <>
           {/* 필터 */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
             <Select
@@ -174,6 +196,8 @@ export function SanctionSection({ companyId }: { companyId: string }) {
                 {showAll ? "접기" : `전체 ${filtered.length}건 중 ${PREVIEW}건 표시 — 전체 보기`}
               </a>
             </div>
+          )}
+          </>
           )}
           <div style={{ marginTop: 10, fontSize: 11.5, color: colors.textHint }}>
             각 건의 근거법령·처분기관은 공시된 사실이며, 원문 링크로 확인할 수 있습니다.

@@ -1,10 +1,9 @@
 // ⭐ 기업 상세 데이터 경계 — 개정 명세 (다타입 테이블 + 출처별 신뢰)
-// 모든 값 결정적 생성. 잠금은 플랜(access.ts tier) 기준. 평가·등급·전망 없음.
+// 모든 값 결정적 생성. 잠금은 화면단 등급 규칙(accessRules: VISIBLE_COUNT)에서 단일 처리.
 import type { Category, SourceCode, SourceDef, ViewerPlan } from "@/types";
 import { BULK_COMPANIES } from "./bulkData";
 import { YEARS } from "./observations";
 import { SOURCES } from "./sources";
-import { tierOf, canAccess } from "./access";
 import { GROUPED_INDICATORS } from "./indicatorGrouping";
 import type { GroupedIndicator } from "./indicatorGrouping";
 import { getIndicatorColumns } from "./indicatorSearch";
@@ -141,7 +140,7 @@ export function getCompanyCardMeta(companyId: string): CompanyCardMeta {
   };
 }
 
-export function getCompanyDetail(companyId: string, plan: ViewerPlan = "member"): CompanyDetail | null {
+export function getCompanyDetail(companyId: string, _plan: ViewerPlan = "member"): CompanyDetail | null {
   const bulk = BULK_COMPANIES.find((c) => c.id === companyId);
   if (!bulk) return null;
   const latestYear = Math.max(...YEARS);
@@ -158,8 +157,6 @@ export function getCompanyDetail(companyId: string, plan: ViewerPlan = "member")
   for (const def of DETAIL_INDICATORS) {
     const seed = hash(`${companyId}|${def.code}`);
     const source = SOURCES[def.source];
-    const tier = tierOf(def.source, latestYear, latestYear);
-    const locked = !canAccess(plan, tier);
     const row: DetailIndicator = {
       code: def.code,
       label: def.label,
@@ -169,7 +166,7 @@ export function getCompanyDetail(companyId: string, plan: ViewerPlan = "member")
       yoy: null,
       source,
       year: latestYear,
-      locked,
+      locked: false, // 등급 잠금은 EsgIndicatorTable에서 accessRules로 단일 처리
     };
 
     if (def.type === "numeric") {

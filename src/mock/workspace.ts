@@ -17,6 +17,7 @@ export interface Portfolio {
   id: string;
   name: string;
   companyIds: string[];
+  savedAt?: string; // 사용자 생성분만 (YYYY-MM-DD)
 }
 
 // 채우기용 사전 정의 포트폴리오 (시나리오 A·E loadPortfolio 대상)
@@ -37,8 +38,60 @@ const DEFAULT_PORTFOLIOS: Portfolio[] = [
       .map((c) => c.id),
   },
 ];
+// 사용자가 만든 포트폴리오(기업리스트) — localStorage 저장
+const PF_KEY = "qesg_ws_portfolios";
+function getUserPortfolios(): Portfolio[] {
+  try {
+    return JSON.parse(localStorage.getItem(PF_KEY) || "[]") as Portfolio[];
+  } catch {
+    return [];
+  }
+}
+function today(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+// 기본(샘플) 폴더는 누구나 보유 — 편집(기업 추가)하면 사용자본이 동일 id로 덮어씀.
+// "내 관심 포트폴리오"(p1)는 개인회원(플랜X) 포함 기본 폴더.
 export function getPortfolios(): Portfolio[] {
-  return DEFAULT_PORTFOLIOS;
+  const user = getUserPortfolios();
+  const byId = new Map(user.map((p) => [p.id, p]));
+  const merged = DEFAULT_PORTFOLIOS.map((d) => byId.get(d.id) ?? d);
+  const extras = user.filter((p) => !DEFAULT_PORTFOLIOS.some((d) => d.id === p.id));
+  return [...merged, ...extras];
+}
+export function getPortfolio(id: string): Portfolio | undefined {
+  return getPortfolios().find((p) => p.id === id);
+}
+export function savePortfolio(name: string, companyIds: string[]): Portfolio {
+  const pf: Portfolio = { id: `pf${new Date().getTime()}`, name, companyIds, savedAt: today() };
+  try {
+    localStorage.setItem(PF_KEY, JSON.stringify([pf, ...getUserPortfolios()]));
+  } catch {
+    /* noop */
+  }
+  return pf;
+}
+// 폴더(기업리스트)에 기업 1곳 추가 — 기본 폴더면 사용자본으로 복제 후 추가
+export function addCompanyToPortfolio(id: string, companyId: string): Portfolio | undefined {
+  const user = getUserPortfolios();
+  let idx = user.findIndex((p) => p.id === id);
+  if (idx === -1) {
+    const def = DEFAULT_PORTFOLIOS.find((p) => p.id === id);
+    if (!def) return undefined;
+    user.unshift({ ...def, companyIds: [...def.companyIds] });
+    idx = 0;
+  }
+  const pf = user[idx];
+  if (!pf.companyIds.includes(companyId)) {
+    user[idx] = { ...pf, companyIds: [...pf.companyIds, companyId], savedAt: today() };
+  }
+  try {
+    localStorage.setItem(PF_KEY, JSON.stringify(user));
+  } catch {
+    /* noop */
+  }
+  return user[idx];
 }
 
 // ── 저장된 작업(테이블 상태) — 마이 포트폴리오 저장소 ──
@@ -176,6 +229,18 @@ export const WORKSPACE_SCENARIOS: WsScenario[] = [
         say: "전자투표제 미도입 여부 확인 중",
         op: { type: "filterRows", colId: "G1", value: "not_adopted" },
       },
+    ],
+  },
+  {
+    id: "H",
+    chip: "동종업계 온실가스 비교",
+    query: "동종업계와 온실가스 배출량 비교해줘",
+    keywords: ["동종", "비교"],
+    needsRows: true,
+    steps: [
+      { kind: "fn", tag: "addIndicator('E3_1')", say: "온실가스 배출량 지표 불러오는 중", op: { type: "addIndicator", code: "E3_1" } },
+      { kind: "fn", tag: "sortBy('E3_1', desc)", say: "배출량 높은 순으로 정렬 중", op: { type: "sortBy", colId: "E3_1", subCode: "total", dir: "desc" } },
+      { kind: "chart", tag: "차트: 동종업계 온실가스", chart: { code: "E3_1", title: "온실가스 배출량 — 동종업계 (FY2025 기준)" } },
     ],
   },
   {

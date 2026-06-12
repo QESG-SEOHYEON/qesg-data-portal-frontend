@@ -2,11 +2,14 @@
 // 카드 메타: 보유 연도 · 커버리지(기업 수). 내부코드 비노출.
 // ⚠️ 출처(데이터 소스) 표시는 사내 정책 확정 전까지 화면에서 끔 — item.sources 데이터는 유지, 렌더만 생략.
 // 맛보기: 그룹당 CATALOG_PREVIEW_PER_CATEGORY 개만 노출 → 하단 "더 보기"가 로그인 유도.
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import { RightOutlined } from "@ant-design/icons";
 import type { Category } from "@/types";
 import { getCatalog, CATALOG_PREVIEW_PER_CATEGORY } from "@/mock/landing";
 import type { CatalogItem } from "@/mock/landing";
+import { getIndicatorColumns } from "@/mock/indicatorSearch";
+import { usePlan } from "@/mock/planContext";
 import { colors, categoryColors } from "@/theme/tokens";
 import { Section } from "./Section";
 import { Marquee } from "./Marquee";
@@ -58,7 +61,21 @@ function Card({ item, onClick }: { item: CatalogItem; onClick?: () => void }) {
 
 export function DataCatalog() {
   const [loginOpen, setLoginOpen] = useState(false);
+  const [plan] = usePlan();
+  const navigate = useNavigate();
   const catalog = getCatalog();
+  // 데이터 조회 표에 실제 존재하는 컬럼(노출 지표)인지 — 맞으면 그 지표로, 아니면 카테고리로 조건
+  const colIds = useMemo(() => new Set(getIndicatorColumns().map((c) => c.id)), []);
+
+  // 비회원 → 로그인 유도 / 그 외 등급 → 데이터 조회 페이지로 해당 조건 걸고 이동
+  const openCard = (item: CatalogItem) => {
+    if (plan === "guest") {
+      setLoginOpen(true);
+      return;
+    }
+    navigate(colIds.has(item.code) ? `/bulk?col=${item.code}` : `/bulk?cat=${item.category}`);
+  };
+  const openMore = () => (plan === "guest" ? setLoginOpen(true) : navigate("/bulk"));
 
   return (
     <Section title="ESG 테마 데이터">
@@ -89,7 +106,7 @@ export function DataCatalog() {
             {/* 카드가 좌→우로 흐르는 마퀴 (hover 시 일시정지). 클릭 → 로그인 유도 */}
             <Marquee direction="ltr" durationSec={MARQUEE_DUR[cat]}>
               {shown.map((item) => (
-                <Card key={item.label} item={item} onClick={() => setLoginOpen(true)} />
+                <Card key={item.label} item={item} onClick={() => openCard(item)} />
               ))}
             </Marquee>
           </div>
@@ -99,7 +116,7 @@ export function DataCatalog() {
       {/* 더 보기 → 로그인 유도 (맛보기 잠금의 funnel 버전) */}
       <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
         <button
-          onClick={() => setLoginOpen(true)}
+          onClick={openMore}
           style={{
             display: "inline-flex",
             alignItems: "center",

@@ -49,7 +49,7 @@ export function AppHeader() {
     { key: "/", label: "홈" },
     { key: "sub-search", label: "통합 검색", children: SEARCH_ITEMS },
     { key: "sub-ws", label: "워크스페이스", children: WORKSPACE_ITEMS },
-    { key: "soon:pricing", label: "요금제" },
+    { key: "/pricing", label: "요금제" },
     { key: "soon:contact", label: "문의/제보" },
     { type: "divider" },
     { key: "login", label: "로그인" },
@@ -116,9 +116,9 @@ export function AppHeader() {
 
             <NavLink
               label="요금제"
-              to=""
-              active={false}
-              onClick={() => handleKey("soon:pricing")}
+              to="/pricing"
+              active={pathname === "/pricing"}
+              onClick={() => navigate("/pricing")}
             />
             <NavLink
               label="문의/제보"

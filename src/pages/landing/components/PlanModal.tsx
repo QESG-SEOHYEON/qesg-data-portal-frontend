@@ -1,5 +1,6 @@
 // 플랜 가입 유도 모달 — 가입은 했으나 요금 미구매(개인 회원)가 잠긴 기능 접근 시.
-import { Modal, Button, App } from "antd";
+import { useNavigate } from "react-router";
+import { Modal, Button } from "antd";
 import { CheckOutlined } from "@ant-design/icons";
 import { colors } from "@/theme/tokens";
 
@@ -10,7 +11,7 @@ const BENEFITS = [
 ];
 
 export function PlanModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { message } = App.useApp();
+  const navigate = useNavigate();
   return (
     <Modal open={open} onCancel={onClose} footer={null} centered width={480} title="플랜 가입">
       <div style={{ fontSize: 13.5, color: colors.textSub, lineHeight: 1.6, marginBottom: 16 }}>
@@ -37,9 +38,12 @@ export function PlanModal({ open, onClose }: { open: boolean; onClose: () => voi
         type="primary"
         block
         style={{ background: colors.accent, borderColor: colors.accent }}
-        onClick={() => message.info("준비 중입니다")}
+        onClick={() => {
+          onClose();
+          navigate("/pricing");
+        }}
       >
-        플랜 보기 / 가입하기
+        플랜 보기
       </Button>
     </Modal>
   );

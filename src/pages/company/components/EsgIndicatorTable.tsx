@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LockOutlined, LinkOutlined, CaretRightOutlined, CaretDownOutlined } from "@ant-design/icons";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RTooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import type { CompanyDetail, DetailIndicator } from "@/mock/companyDetail";
+import type { ViewerPlan } from "@/types";
+import { VISIBLE_COUNT, trendMode, lockCta } from "@/mock/accessRules";
 import { colors } from "@/theme/tokens";
 
 const PAGE = 8; // 탭당 기본 노출 수
@@ -48,14 +50,20 @@ function ValueCell({ ind }: { ind: DetailIndicator }) {
 export function EsgIndicatorTable({
   rows,
   trend,
+  tier,
   focusCode,
   onSeeAll,
 }: {
   rows: DetailIndicator[];
   trend: CompanyDetail["trend"];
+  tier: ViewerPlan;
   focusCode?: string;
   onSeeAll?: () => void; // 전체 보기 → 데이터 조회(통합)로 이동
 }) {
+  // 등급 분기: 카테고리당 노출 지표 수 / 다개년 추이 허용 여부 (CAN/VISIBLE_COUNT만 참조)
+  const limit = VISIBLE_COUNT(tier, "indicatorsPerCategory");
+  const multiTrend = trendMode(tier) === "multi";
+  const limited = limit !== Infinity; // 비회원만 상위 N개 제한
   const [expanded, setExpanded] = useState<string | null>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
   const focusRef = useRef<HTMLTableRowElement>(null);
@@ -72,14 +80,14 @@ export function EsgIndicatorTable({
     [focusCode, rows],
   );
 
-  // 탭당 8개만 노출. 포커싱된 지표가 8개 밖이면 맨 앞에 끌어와 항상 보이게(유연)
+  // 탭당 8개만 노출. 셀 클릭(포커싱)으로 들어온 지표는 항상 맨 앞으로 끌어와
+  // 노출 한도(상위 N개) 안에 들도록 핀 — 홈에서 보이던 값이 기업 페이지에서 잠기지 않게.
   const visible = useMemo(() => {
-    let base = rows.slice(0, PAGE);
-    if (matchCode && !base.some((r) => r.code === matchCode)) {
+    if (matchCode) {
       const fr = rows.find((r) => r.code === matchCode);
-      if (fr) base = [fr, ...rows.filter((r) => r.code !== matchCode)].slice(0, PAGE);
+      if (fr) return [fr, ...rows.filter((r) => r.code !== matchCode)].slice(0, PAGE);
     }
-    return base;
+    return rows.slice(0, PAGE);
   }, [rows, matchCode]);
   const hiddenCount = rows.length - visible.length;
 
@@ -123,16 +131,20 @@ export function EsgIndicatorTable({
           </tr>
         </thead>
         <tbody>
-          {visible.map((ind) => {
+          {visible.map((ind, i) => {
             const t = trend[ind.code];
             const hasSubs = !!ind.subs?.length;
-            const expandable = !ind.locked && ((ind.type === "numeric" && !!t) || hasSubs);
+            // 잠긴 행: 값만 가림(형태·연도 유지). 상위 N개 밖 → 등급 잠금
+            const locked = ind.locked || (limited && i >= limit);
+            const expandable = !locked && ((ind.type === "numeric" && !!t && multiTrend) || hasSubs);
             const isOpen = expanded === ind.code;
             return (
               <RowGroup
                 key={ind.code}
                 ind={ind}
                 trend={t}
+                locked={locked}
+                multiTrend={multiTrend}
                 expandable={expandable}
                 isOpen={isOpen}
                 highlighted={highlight === ind.code}
@@ -144,8 +156,14 @@ export function EsgIndicatorTable({
         </tbody>
       </table>
 
-      {hiddenCount > 0 && (
+      {(hiddenCount > 0 || limited) && (
         <div style={{ textAlign: "center", padding: "12px 0 4px" }}>
+          {limited && (
+            <div style={{ fontSize: 12, color: colors.textHint, marginBottom: 8 }}>
+              <LockOutlined style={{ fontSize: 11, marginRight: 4 }} />
+              상위 {limit}개 지표만 표시됩니다 — 나머지는 흐림 처리됩니다
+            </div>
+          )}
           <button
             onClick={() => onSeeAll?.()}
             style={{
@@ -159,7 +177,7 @@ export function EsgIndicatorTable({
               cursor: "pointer",
             }}
           >
-            전체 보기
+            {limited ? lockCta(tier) : "전체 보기"}
           </button>
         </div>
       )}
@@ -170,6 +188,8 @@ export function EsgIndicatorTable({
 function RowGroup({
   ind,
   trend,
+  locked,
+  multiTrend,
   expandable,
   isOpen,
   highlighted,
@@ -178,12 +198,16 @@ function RowGroup({
 }: {
   ind: DetailIndicator;
   trend?: CompanyDetail["trend"][string];
+  locked: boolean;
+  multiTrend: boolean;
   expandable: boolean;
   isOpen: boolean;
   highlighted?: boolean;
   rowRef?: React.Ref<HTMLTableRowElement>;
   onToggle: () => void;
 }) {
+  // 잠긴 행은 값/전년대비만 가림 — 지표명 형태는 그대로 유지
+  const lockedInd = locked ? { ...ind, locked: true } : ind;
   return (
     <>
       <tr
@@ -200,7 +224,7 @@ function RowGroup({
         </td>
         <td style={{ padding: "12px", borderBottom: `1px solid ${colors.border}`, textAlign: "right" }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
-            <ValueCell ind={ind} />
+            <ValueCell ind={lockedInd} />
             {expandable &&
               (isOpen ? (
                 <CaretDownOutlined style={{ fontSize: 10, color: colors.textHint }} />
@@ -210,9 +234,9 @@ function RowGroup({
           </span>
         </td>
         <td style={{ padding: "12px", borderBottom: `1px solid ${colors.border}`, textAlign: "right" }}>
-          {ind.type === "numeric" && !ind.locked ? (
+          {ind.type === "numeric" && !locked ? (
             <span style={{ fontSize: 13, color: colors.textSub, fontVariantNumeric: "tabular-nums" }}>{ind.yoy ?? "—"}</span>
-          ) : ind.locked ? (
+          ) : locked ? (
             <LockOutlined style={{ color: colors.textHint, fontSize: 12 }} />
           ) : (
             <span style={{ color: colors.textHint }}></span>
@@ -224,7 +248,7 @@ function RowGroup({
           <td colSpan={3} style={{ borderBottom: `1px solid ${colors.border}`, background: colors.bgPage, padding: "14px 16px" }}>
             {ind.subs?.length ? (
               <SubDetail ind={ind} />
-            ) : trend ? (
+            ) : multiTrend && trend ? (
               <>
                 <div style={{ height: 160 }}>
                   <ResponsiveContainer width="100%" height="100%">

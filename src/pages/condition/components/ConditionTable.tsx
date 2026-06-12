@@ -1,20 +1,26 @@
 // 통합 검색 대량 테이블 — 상태/필터바/페이지네이션 관리 + 공용 IndicatorGrid로 표 렌더.
 // 종합점수·등급·순위 컬럼 없음(안전선). 잠금은 플랜(행 단위) 기준.
 import { useMemo, useState } from "react";
-import { Button, Tooltip, Tag, Badge, Pagination } from "antd";
-import { DownloadOutlined, ApiOutlined, FilterOutlined } from "@ant-design/icons";
+import { Button, Tooltip, Tag, Badge, Pagination, Select, Modal, Input, App } from "antd";
+import {
+  DownloadOutlined,
+  ApiOutlined,
+  FilterOutlined,
+  FolderOpenOutlined,
+  SaveOutlined,
+} from "@ant-design/icons";
 import type { Category, ViewerPlan } from "@/types";
 import {
   getIndicatorColumns,
   getIndicatorRows,
   cellKey,
   DEFAULT_COLUMN_IDS,
-  FREE_ROW_LIMIT,
   SEARCH_LATEST_YEAR,
 } from "@/mock/indicatorSearch";
 import type { IndicatorRow } from "@/mock/indicatorSearch";
 import { getSanctionCounts } from "@/mock/sanctions";
-import { isEnterprise } from "@/mock/access";
+import { getPortfolios, getPortfolio, savePortfolio } from "@/mock/workspace";
+import { CAN, VISIBLE_COUNT, lockCta } from "@/mock/accessRules";
 import { colors } from "@/theme/tokens";
 import { IndicatorGrid } from "@/components/IndicatorGrid";
 import type { SortState } from "@/components/IndicatorGrid";
@@ -92,7 +98,24 @@ export function ConditionTable({
   const [showSanctions, setShowSanctions] = useState(initialColumnId === "__sanctions");
   const [sanctionExpanded, setSanctionExpanded] = useState(initialColumnId === "__sanctions");
 
-  const canExport = isEnterprise(plan);
+  // 내 포트폴리오(기업리스트) — 불러오기 / 현재 기업 저장
+  const { message } = App.useApp();
+  const [pfSaveOpen, setPfSaveOpen] = useState(false);
+  const [pfName, setPfName] = useState("");
+  const hasCompanies = !!companyIds && companyIds.length > 0;
+  const doSavePf = () => {
+    if (!pfName.trim() || !companyIds?.length) return;
+    savePortfolio(pfName.trim(), companyIds);
+    setPfSaveOpen(false);
+    setPfName("");
+    message.success("내 포트폴리오에 저장했어요");
+  };
+
+  // 등급 분기: Excel=개인O+, API=기업O+, 행 수 제한=비회원만 (CAN/VISIBLE_COUNT만 참조)
+  const canExcel = CAN(plan, "excel");
+  const canApi = CAN(plan, "api");
+  const rowLimit = VISIBLE_COUNT(plan, "rows");
+  const rowsUnlimited = rowLimit === Infinity;
   const multiYear = years.length > 1;
   const sortedYears = useMemo(() => [...years].sort((a, b) => a - b), [years]);
 
@@ -204,13 +227,35 @@ export function ConditionTable({
         </Tag>
 
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          <Tooltip title={canExport ? "" : "플랜 회원 전용"}>
-            <Button icon={<DownloadOutlined />} disabled={!canExport} onClick={() => console.log("excel")}>
+          <Select
+            size="middle"
+            style={{ width: 168 }}
+            placeholder="내 포트폴리오"
+            suffixIcon={<FolderOpenOutlined />}
+            value={null}
+            notFoundContent="저장한 포트폴리오가 없어요"
+            options={getPortfolios().map((p) => ({
+              value: p.id,
+              label: `${p.name} · ${p.companyIds.length}곳`,
+            }))}
+            onChange={(id) => onSetCompanyIds(getPortfolio(id)?.companyIds)}
+          />
+          <Tooltip title={hasCompanies ? "" : "기업을 담은 뒤 포트폴리오로 저장할 수 있어요"}>
+            <Button
+              icon={<SaveOutlined />}
+              disabled={!hasCompanies}
+              onClick={() => setPfSaveOpen(true)}
+            >
+              포트폴리오 저장
+            </Button>
+          </Tooltip>
+          <Tooltip title={canExcel ? "" : lockCta(plan)}>
+            <Button icon={<DownloadOutlined />} disabled={!canExcel} onClick={() => console.log("excel")}>
               다운로드
             </Button>
           </Tooltip>
-          <Tooltip title={canExport ? "" : "플랜 회원 전용"}>
-            <Button icon={<ApiOutlined />} disabled={!canExport} onClick={() => console.log("api")}>
+          <Tooltip title={canApi ? "" : lockCta(plan)}>
+            <Button icon={<ApiOutlined />} disabled={!canApi} onClick={() => console.log("api")}>
               API
             </Button>
           </Tooltip>
@@ -251,7 +296,7 @@ export function ConditionTable({
           onCompanyOpen={onCompanyOpen}
           onIndicatorOpen={onIndicatorOpen}
           onSanctionOpen={onSanctionOpen}
-          lockedFrom={isEnterprise(plan) ? Infinity : Math.max(0, FREE_ROW_LIMIT - safePage * PAGE)}
+          lockedFrom={rowsUnlimited ? Infinity : Math.max(0, rowLimit - safePage * PAGE)}
           addColumnSlot={
             <AddIndicatorColumn
               count={visibleIds.length}
@@ -264,7 +309,7 @@ export function ConditionTable({
         />
 
         {/* 비회원 미리보기 안내 (2페이지부터 가입/플랜 유도) */}
-        {!isEnterprise(plan) && pages > 1 && (
+        {!rowsUnlimited && pages > 1 && (
           <div
             style={{
               display: "flex",
@@ -294,7 +339,7 @@ export function ConditionTable({
             showSizeChanger={false}
             showQuickJumper
             onChange={(p) => {
-              if (p > 1 && !isEnterprise(plan)) {
+              if (p > 1 && !rowsUnlimited) {
                 onUpgrade();
                 return;
               }
@@ -325,6 +370,28 @@ export function ConditionTable({
           onSetCompanyIds(next.companyIds);
         }}
       />
+
+      {/* 포트폴리오 저장 모달 */}
+      <Modal
+        open={pfSaveOpen}
+        onCancel={() => setPfSaveOpen(false)}
+        onOk={doSavePf}
+        okText="저장"
+        cancelText="닫기"
+        title="내 포트폴리오로 저장"
+        centered
+        width={420}
+      >
+        <div style={{ fontSize: 13, color: colors.textSub, marginBottom: 10 }}>
+          현재 표의 기업 {companyIds?.length ?? 0}곳을 기업리스트로 저장합니다. (내 포트폴리오 → 내 기업리스트)
+        </div>
+        <Input
+          placeholder="예: 반도체 관심군"
+          value={pfName}
+          onChange={(e) => setPfName(e.target.value)}
+          onPressEnter={doSavePf}
+        />
+      </Modal>
     </div>
   );
 }

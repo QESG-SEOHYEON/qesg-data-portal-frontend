@@ -6,7 +6,7 @@
 //  - 데스크톱: 최근업데이트 ↔ 출처현황 가로 2단
 //  - 와이드(≥1280): 우측 sticky 레일에 최근업데이트(세로) + 가입 CTA 부착
 import { useState } from "react";
-import type { ViewerPlan } from "@/types";
+import { usePlan } from "@/mock/planContext";
 import { colors, layout } from "@/theme/tokens";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { HeroSearch } from "./components/HeroSearch";
@@ -23,7 +23,7 @@ import { RightRail } from "@/components/RightRail";
 export function LandingPage() {
   const bp = useBreakpoint();
   const [loginOpen, setLoginOpen] = useState(false);
-  const [plan, setPlan] = useState<ViewerPlan>("guest");
+  const [plan, setPlan] = usePlan();
   const isMobile = bp === "mobile";
   const isDesktop = bp === "desktop";
   const isWide = bp === "wide";
@@ -47,7 +47,7 @@ export function LandingPage() {
         >
           <div style={{ flex: 1, minWidth: 0 }}>
             <DataCatalog />
-            <CompanyDataFeed />
+            <CompanyDataFeed plan={plan} onLogin={() => setLoginOpen(true)} />
             <IndustrySectorPair />
             <EsgNews />
             <SrDisclosureStatus />
@@ -70,7 +70,7 @@ export function LandingPage() {
         <>
           <DataCatalog />
           {/* 항상 노출(모바일 포함): 기업 ESG 데이터 · 산업군 데이터 · ESG 뉴스 */}
-          <CompanyDataFeed />
+          <CompanyDataFeed plan={plan} onLogin={() => setLoginOpen(true)} />
           {/* 산업군 데이터 + 업종 트렌드: 데스크톱 2단 / 태블릿·모바일은 세로로 쌓음 */}
           <IndustrySectorPair stack={!isDesktop} />
           <EsgNews />

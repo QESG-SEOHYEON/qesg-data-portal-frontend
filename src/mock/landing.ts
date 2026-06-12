@@ -27,6 +27,7 @@ export interface SourceOverviewItem {
 
 export interface CatalogItem {
   label: string;
+  code: string; // 지표 코드 — 카드 클릭 시 데이터 조회 조건(?col=)으로 사용
   category: Category;
   /** 출처 라벨(명세 표기 그대로) — 표시 시 SourceCode로 매핑 */
   sources: string[];
@@ -90,6 +91,7 @@ export function getCatalog(): CatalogItem[] {
     const coverageNum = 800 + (seed % 2000); // 800~2,799사
     return {
       label: item.name,
+      code: item.code,
       category: item.category,
       sources: mockSources(item, seed),
       years: seed % 3 === 0 ? "2023~2025" : "2022~2025",

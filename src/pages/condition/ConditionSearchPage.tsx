@@ -3,13 +3,15 @@
 // 잠금은 플랜 셀렉터(access.ts). 종합점수·등급·순위 없음(안전선).
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import type { Category, ViewerPlan } from "@/types";
+import type { Category } from "@/types";
+import { usePlan } from "@/mock/planContext";
 import { colors, categoryColors, layout } from "@/theme/tokens";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { RightRail } from "@/components/RightRail";
 import { SearchWidget } from "@/pages/search/components/SearchWidget";
 import { SearchEntry } from "./components/SearchEntry";
 import { getIndicatorColumns } from "@/mock/indicatorSearch";
+import { getPortfolio } from "@/mock/workspace";
 import { ResultsSummary } from "./components/ResultsSummary";
 import { ConditionTable } from "./components/ConditionTable";
 import { LoginModal } from "@/pages/landing/components/LoginModal";
@@ -29,19 +31,20 @@ export function ConditionSearchPage() {
   const company0 = params.get("company") ?? undefined; // 개별기업 "전체 보기" → 그 기업 필터
   const sector0 = params.get("sector") ?? undefined; // 업종 칩(기업 칩 떼면 동종업계로)
   const group0 = params.get("group") ?? undefined; // 둘러보기: 소그룹 전체 조회
+  const pf0 = params.get("pf") ?? undefined; // 내 포트폴리오(기업리스트) 불러오기
   const full0 = params.get("full") === "1"; // 카테고리 전체 지표 표시
   const cat0Valid = cat0 && CAT_SET.has(cat0) ? (cat0 as Category) : undefined;
   const [mode, setMode] = useState<Mode>(
-    cat0Valid || col0 || company0 || group0 ? "table" : q0 ? "summary" : "entry",
+    cat0Valid || col0 || company0 || group0 || pf0 ? "table" : q0 ? "summary" : "entry",
   );
   const [query, setQuery] = useState(q0);
-  const [plan, setPlan] = useState<ViewerPlan>("member");
+  const [plan, setPlan] = usePlan();
 
   // 표 진입 컨텍스트
   const [tableColumnId, setTableColumnId] = useState<string | undefined>(col0);
   const [tableCategory, setTableCategory] = useState<Category | undefined>(cat0Valid);
   const [companyIds, setCompanyIds] = useState<string[] | undefined>(
-    company0 ? [company0] : undefined,
+    pf0 ? getPortfolio(pf0)?.companyIds : company0 ? [company0] : undefined,
   );
 
   // 모달
@@ -58,7 +61,14 @@ export function ConditionSearchPage() {
     const q = params.get("q");
     const company = params.get("company");
     const group = params.get("group");
-    if (company) {
+    const pf = params.get("pf");
+    if (pf) {
+      // 내 포트폴리오(기업리스트) 불러오기 → 그 기업들로 표 조회
+      setCompanyIds(getPortfolio(pf)?.companyIds);
+      setTableCategory(undefined);
+      setTableColumnId(undefined);
+      setMode("table");
+    } else if (company) {
       // 개별기업 "전체 보기" → 그 기업 필터 + 카테고리(있으면)
       setCompanyIds([company]);
       setTableCategory(cat && CAT_SET.has(cat) ? (cat as Category) : undefined);

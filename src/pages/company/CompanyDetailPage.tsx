@@ -6,13 +6,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useLocation, useSearchParams, useNavigate } from "react-router";
 import { Button, Empty } from "antd";
 import { HeartOutlined } from "@ant-design/icons";
-import type { Category, ViewerPlan } from "@/types";
+import type { Category } from "@/types";
 import { getCompanyDetail, getCompanyCardMeta } from "@/mock/companyDetail";
 import { pushRecentView } from "@/mock/recentViews";
+import { usePlan } from "@/mock/planContext";
 import { colors, categoryColors, layout } from "@/theme/tokens";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { RightRail } from "@/components/RightRail";
 import { LoginModal } from "@/pages/landing/components/LoginModal";
+import { PlanModal } from "@/pages/landing/components/PlanModal";
+import { SaveToPortfolioModal } from "./components/SaveToPortfolioModal";
 import { EsgIndicatorTable } from "./components/EsgIndicatorTable";
 import { SanctionSection } from "./components/SanctionSection";
 import { AskAboutCompany } from "./components/AskAboutCompany";
@@ -29,10 +32,15 @@ export function CompanyDetailPage() {
   const focusCat = sp.get("cat"); // 그리드 셀 클릭 → 카테고리 포커싱
   const focusInd = sp.get("ind") ?? undefined; // 클릭한 지표 라벨(근사 매칭)
   const bp = useBreakpoint();
-  const [plan, setPlan] = useState<ViewerPlan>("member");
+  const [plan, setPlan] = usePlan();
   const [tab, setTab] = useState<Category>("E");
   const [focusActive, setFocusActive] = useState(true); // 진입 시 포커싱 1회, 수동 탭 전환 시 해제
   const [loginOpen, setLoginOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false); // 관심 기업 저장(폴더 선택) 모달
+
+  // 잠금 유도 — 비회원은 로그인, 그 외(개인X 등)는 플랜 안내
+  const requireUpgrade = () => (plan === "guest" ? setLoginOpen(true) : setPlanOpen(true));
 
   const detail = useMemo(() => getCompanyDetail(companyId, plan), [companyId, plan]);
 
@@ -46,11 +54,15 @@ export function CompanyDetailPage() {
     if (focusCat && CATEGORIES.includes(focusCat as Category)) setTab(focusCat as Category);
   }, [focusCat]);
 
-  // #sanctions 해시로 진입 시 제재 섹션으로 스크롤
+  // #sanctions 해시로 진입 시 제재 섹션으로 스크롤 — 스티키 헤더 밑 상단에 박히지 않고
+  // 화면 상단 1/4 지점(시야 중앙부)에 오도록 오프셋 적용
   useEffect(() => {
     if (hash !== "#sanctions") return;
     const t = setTimeout(() => {
-      document.getElementById("sanctions")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const el = document.getElementById("sanctions");
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: Math.max(0, top - window.innerHeight * 0.25), behavior: "smooth" });
     }, 200);
     return () => clearTimeout(t);
   }, [hash, detail?.id]);
@@ -109,20 +121,19 @@ export function CompanyDetailPage() {
               {detail.id}
             </span>
           </div>
-          <div style={{ fontSize: 12.5, color: colors.textHint, marginTop: 4 }}>
-            {[
-              detail.industry,
-              detail.market,
-              detail.size,
-              getCompanyCardMeta(detail.id).srPublished
-                ? `FY${detail.baseYear} 지속가능경영보고서 공시`
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+            <MetaChip tone={META_TONES.sector}>{detail.industry}</MetaChip>
+            <MetaChip tone={META_TONES.market}>{detail.market}</MetaChip>
+            <MetaChip tone={META_TONES.size}>{detail.size}</MetaChip>
+            {getCompanyCardMeta(detail.id).srPublished && (
+              <MetaChip tone={META_TONES.sr}>FY{detail.baseYear} 지속가능경영보고서 공시</MetaChip>
+            )}
           </div>
         </div>
-        <Button icon={<HeartOutlined />} onClick={() => console.log("save-company")}>
+        <Button
+          icon={<HeartOutlined />}
+          onClick={() => (plan === "guest" ? setLoginOpen(true) : setSaveOpen(true))}
+        >
           관심기업 저장
         </Button>
       </div>
@@ -190,6 +201,7 @@ export function CompanyDetailPage() {
         <EsgIndicatorTable
           rows={detail.indicators[tab]}
           trend={detail.trend}
+          tier={plan}
           focusCode={focusActive && focusCat === tab ? focusInd : undefined}
           onSeeAll={() =>
             plan === "guest"
@@ -205,10 +217,15 @@ export function CompanyDetailPage() {
       </div>
 
       {/* ── 법규위반·제재 내역 ── */}
-      <SanctionSection companyId={detail.id} />
+      <SanctionSection companyId={detail.id} tier={plan} onLocked={requireUpgrade} />
 
       {/* ── AI 질의 ── */}
-      <AskAboutCompany detail={detail} />
+      <AskAboutCompany
+        detail={detail}
+        tier={plan}
+        onLogin={() => setLoginOpen(true)}
+        onUpgrade={() => setPlanOpen(true)}
+      />
 
       {/* ── 공시 원문 ── */}
       <DisclosureSources detail={detail} />
@@ -217,7 +234,38 @@ export function CompanyDetailPage() {
       <SimilarCompanies detail={detail} />
 
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <PlanModal open={planOpen} onClose={() => setPlanOpen(false)} />
+      <SaveToPortfolioModal
+        open={saveOpen}
+        onClose={() => setSaveOpen(false)}
+        company={{ id: detail.id, name: detail.name, sector: detail.industry }}
+      />
     </Page>
+  );
+}
+
+// 기업 메타 칩 — 검색 결과 카드와 동일 톤(중립색, 우열 아님)
+const META_TONES = {
+  sector: { bg: "#EEF3F8", fg: "#3F5E7A" },
+  market: { bg: "#F2EFF8", fg: "#5A4F86" },
+  size: { bg: "#F4F1EA", fg: "#6E5A36" },
+  sr: { bg: "#E9F3EF", fg: "#3E6B5C" },
+};
+function MetaChip({ tone, children }: { tone: { bg: string; fg: string }; children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        fontSize: 12,
+        fontWeight: 600,
+        color: tone.fg,
+        background: tone.bg,
+        padding: "3px 9px",
+        borderRadius: 4,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </span>
   );
 }
 

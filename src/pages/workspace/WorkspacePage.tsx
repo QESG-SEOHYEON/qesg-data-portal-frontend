@@ -13,6 +13,7 @@ import {
   FilterOutlined,
   DownloadOutlined,
   ApiOutlined,
+  LockOutlined,
 } from "@ant-design/icons";
 import type { ViewerPlan } from "@/types";
 import {
@@ -26,6 +27,7 @@ import { BULK_COMPANIES } from "@/mock/bulkData";
 import { getSanctionCounts } from "@/mock/sanctions";
 import {
   getPortfolios,
+  getPortfolio,
   getSavedWork,
   getSavedWorks,
   saveWorkspace,
@@ -34,6 +36,8 @@ import {
 import type { WsOp } from "@/mock/workspace";
 import { searchMock } from "@/mock/search";
 import { PLAN_ORDER, PLAN_LABELS } from "@/mock/access";
+import { usePlan } from "@/mock/planContext";
+import { CAN, lockCta } from "@/mock/accessRules";
 import { colors, layout } from "@/theme/tokens";
 import { IndicatorGrid } from "@/components/IndicatorGrid";
 import type { SortState } from "@/components/IndicatorGrid";
@@ -65,11 +69,22 @@ export function WorkspacePage() {
 
   const [sp] = useSearchParams();
   const loaded = sp.get("load") ? getSavedWork(sp.get("load")!) : undefined;
+  const companyParam = sp.get("company"); // 기업 상세에서 핸드오프 → 그 기업 시드
+  const peersParam = sp.get("peers"); // 동종업계 비교 핸드오프 → 그 업종 피어 시드
+  const pfParam = sp.get("pf"); // 내 포트폴리오(기업리스트) → 그 기업들 시드
 
-  const [plan, setPlan] = useState<ViewerPlan>("member");
+  const [plan, setPlan] = usePlan(); // 전역 데모 등급(페이지 이동해도 유지)
   const admin = plan === "admin";
-  // 진입 시 빈 테이블(채우기 유도) — ?load=<id>면 저장 작업 복원
-  const [companyIds, setCompanyIds] = useState<string[]>(loaded?.companyIds ?? []);
+  // 진입 시 빈 테이블(채우기 유도) — ?load=저장복원 / ?peers=동종업계 / ?company=기업
+  const [companyIds, setCompanyIds] = useState<string[]>(() => {
+    if (loaded?.companyIds) return loaded.companyIds;
+    if (pfParam) return getPortfolio(pfParam)?.companyIds ?? [];
+    if (peersParam)
+      return BULK_COMPANIES.filter((c) => c.sector === peersParam)
+        .slice(0, 6)
+        .map((c) => c.id);
+    return companyParam ? [companyParam] : [];
+  });
   const [indicatorIds, setIndicatorIds] = useState<string[]>(loaded?.indicatorIds ?? []);
   const [sectors, setSectors] = useState<string[]>(loaded?.sectors ?? []);
   const [years, setYears] = useState<number[]>(loaded?.years ?? [SEARCH_LATEST_YEAR]);
@@ -93,6 +108,11 @@ export function WorkspacePage() {
   const [planOpen, setPlanOpen] = useState(false);
 
   const requireUpgrade = () => (plan === "guest" ? setLoginOpen(true) : setPlanOpen(true));
+  // 등급 분기: 워크스페이스 진입=개인O+, 저장/Excel=개인O+, API=기업O+
+  const canWorkspace = CAN(plan, "workspace");
+  const canSave = CAN(plan, "save");
+  const canExcel = CAN(plan, "excel");
+  const canApi = CAN(plan, "api");
   const sortedYears = useMemo(() => [...years].sort((a, b) => a - b), [years]);
   const latestYear = sortedYears[sortedYears.length - 1] ?? SEARCH_LATEST_YEAR;
   const cols = useMemo(
@@ -215,8 +235,8 @@ export function WorkspacePage() {
   const portfolios = getPortfolios();
 
   function doSave() {
-    if (plan === "guest") {
-      setLoginOpen(true);
+    if (!canSave) {
+      requireUpgrade();
       return;
     }
     if (!saveName.trim()) return;
@@ -235,8 +255,8 @@ export function WorkspacePage() {
   }
   // 표 다운로드(목업) — 마이 포트폴리오 다운로드 이력에 기록
   function doDownload(kind: "Excel" | "API") {
-    if (plan === "guest") {
-      setLoginOpen(true);
+    if (kind === "Excel" ? !canExcel : !canApi) {
+      requireUpgrade();
       return;
     }
     if (rows.length === 0) return;
@@ -299,22 +319,43 @@ export function WorkspacePage() {
               }))}
               onChange={(id) => restoreWork(id)}
             />
-            <Button icon={<SaveOutlined />} onClick={() => setSaveOpen(true)}>
-              저장
-            </Button>
-            <Tooltip title={rows.length === 0 ? "표에 데이터가 있을 때 받을 수 있어요" : ""}>
+            <Tooltip title={canSave ? "" : lockCta(plan)}>
               <Button
-                icon={<DownloadOutlined />}
-                disabled={rows.length === 0}
+                icon={canSave ? <SaveOutlined /> : <LockOutlined />}
+                onClick={() => (canSave ? setSaveOpen(true) : requireUpgrade())}
+              >
+                저장
+              </Button>
+            </Tooltip>
+            <Tooltip
+              title={
+                !canExcel
+                  ? lockCta(plan)
+                  : rows.length === 0
+                    ? "표에 데이터가 있을 때 받을 수 있어요"
+                    : ""
+              }
+            >
+              <Button
+                icon={canExcel ? <DownloadOutlined /> : <LockOutlined />}
+                disabled={canExcel && rows.length === 0}
                 onClick={() => doDownload("Excel")}
               >
                 Excel
               </Button>
             </Tooltip>
-            <Tooltip title={rows.length === 0 ? "표에 데이터가 있을 때 받을 수 있어요" : ""}>
+            <Tooltip
+              title={
+                !canApi
+                  ? lockCta(plan)
+                  : rows.length === 0
+                    ? "표에 데이터가 있을 때 받을 수 있어요"
+                    : ""
+              }
+            >
               <Button
-                icon={<ApiOutlined />}
-                disabled={rows.length === 0}
+                icon={canApi ? <ApiOutlined /> : <LockOutlined />}
+                disabled={canApi && rows.length === 0}
                 onClick={() => doDownload("API")}
               />
             </Tooltip>
@@ -338,211 +379,256 @@ export function WorkspacePage() {
           </div>
         </div>
 
-        {/* 본문: 좌 테이블 + 우 AI */}
-        <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {/* 툴바: 채우기 4방식(기업/지표/필터) */}
+        {/* 워크스페이스 진입 잠금 (개인O+ 전용) — 있지만 잠김: 흐림 위 안내 */}
+        {!canWorkspace ? (
+          <div
+            style={{
+              border: `1px solid ${colors.border}`,
+              borderRadius: 12,
+              background: colors.bgSurface,
+              padding: "64px 24px",
+              textAlign: "center",
+            }}
+          >
+            <LockOutlined style={{ fontSize: 30, color: colors.primary }} />
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-                background: colors.bgSurface,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 12,
-                padding: "10px 14px",
-                marginBottom: 12,
+                fontSize: 17,
+                fontWeight: 800,
+                color: colors.textBase,
+                margin: "14px 0 6px",
               }}
             >
-              <Button icon={<PlusOutlined />} onClick={() => setPickerOpen(true)}>
-                기업
-              </Button>
-              <Button icon={<FolderOpenOutlined />} onClick={() => setPfOpen(true)}>
-                포트폴리오 불러오기
-              </Button>
-              <Button icon={<AppstoreOutlined />} onClick={() => openFilter("columns")}>
-                지표
-              </Button>
-              <Button icon={<FilterOutlined />} onClick={() => openFilter("year")}>
-                필터
-              </Button>
-              {rowFilter && (
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: "#7A5B17",
-                    background: "#FFF8EC",
-                    border: "1px solid #F3E2BE",
-                    borderRadius: 12,
-                    padding: "3px 10px",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => setRowFilter(null)}
-                >
-                  AI 필터: {allCols.find((c) => c.id === rowFilter.colId)?.label} = 미도입 ✕
-                </span>
-              )}
-              <span style={{ marginLeft: "auto", fontSize: 12, color: colors.textHint }}>
-                채우기: 기업 선택 · 포트폴리오 · 조건 · AI 요청
-              </span>
+              개인(플랜)·기업 회원 전용입니다
             </div>
-
-            {/* 통합 데이터 테이블 (공용 IndicatorGrid) */}
             <div
-              style={{
-                background: colors.bgSurface,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 12,
-                overflow: "hidden",
-              }}
+              style={{ fontSize: 13.5, color: colors.textSub, marginBottom: 20, lineHeight: 1.6 }}
             >
-              {companyIds.length === 0 &&
-              sectors.length === 0 &&
-              cols.length === 0 &&
-              !showSanctions ? (
-                <div style={{ padding: "56px 20px", textAlign: "center" }}>
-                  <div
-                    style={{
-                      fontSize: 15,
-                      fontWeight: 700,
-                      color: colors.textBase,
-                      marginBottom: 6,
-                    }}
-                  >
-                    빈 작업공간입니다
-                  </div>
-                  <div style={{ fontSize: 13, color: colors.textSub, marginBottom: 18 }}>
-                    기업·지표를 담거나 AI에게 요청해 표를 채워보세요.
-                  </div>
-                  <div
-                    style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}
-                  >
-                    <Button
-                      type="primary"
-                      icon={<PlusOutlined />}
-                      onClick={() => setPickerOpen(true)}
-                      style={{ background: colors.primary, borderColor: colors.primary }}
-                    >
-                      기업 선택
-                    </Button>
-                    <Button icon={<FolderOpenOutlined />} onClick={() => setPfOpen(true)}>
-                      포트폴리오 불러오기
-                    </Button>
-                    <Button icon={<AppstoreOutlined />} onClick={() => openFilter("columns")}>
-                      지표 추가
-                    </Button>
-                    <Button icon={<RobotOutlined />} onClick={() => setAiOpen(true)}>
-                      AI에게 요청
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <IndicatorGrid
-                  cols={cols}
-                  sortedYears={sortedYears}
-                  multiYear={years.length > 1}
-                  rows={sortedRows}
-                  expandedSubs={expandedSubs}
-                  onToggleSubs={toggleSubs}
-                  showSanctions={showSanctions}
-                  sanctionExpanded={sanctionExpanded}
-                  onToggleSanctionExpanded={() => setSanctionExpanded((v) => !v)}
-                  onRemoveSanctions={() => setShowSanctions(false)}
-                  sanctionCounts={sanctionCounts}
-                  sort={sort}
-                  onToggleSort={toggleSort}
-                  onSanctionSort={sanctionSort}
-                  onRemoveColumn={(id) => setIndicatorIds((prev) => prev.filter((x) => x !== id))}
-                  onCompanyOpen={(id) => navigate(`/company/${id}`)}
-                  onIndicatorOpen={(id, cat, code) =>
-                    navigate(`/company/${id}?cat=${cat}&ind=${code}`)
-                  }
-                  onSanctionOpen={(id) => navigate(`/company/${id}#sanctions`)}
-                  addColumnSlot={
-                    <AddIndicatorColumn
-                      count={indicatorIds.length}
-                      plan={plan}
-                      onOpen={() => openFilter("columns")}
-                      onUpgrade={requireUpgrade}
-                    />
-                  }
-                />
-              )}
+              워크스페이스는 나만의 기업,지표를 모아 비교하고 AI로 분석하는 작업공간이에요.
+              <br />
+              <b>이용 문의는 서비스 소개를 눌러 더 자세히 알아보세요.</b>
             </div>
-            <div style={{ marginTop: 10, fontSize: 11.5, color: colors.textHint }}>
-              공시·수집된 원본 데이터입니다. 평가·등급·순위·점수가 아닙니다.
-            </div>
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => navigate("/pricing")}
+              style={{ background: colors.primary, borderColor: colors.primary }}
+            >
+              서비스 소개
+            </Button>
           </div>
-
-          {/* AI 패널 (접기/펴기) */}
-          {aiOpen ? (
-            <div
-              style={{
-                width: 360,
-                flexShrink: 0,
-                alignSelf: "flex-start",
-                position: "sticky",
-                top: 132,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 12,
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
+        ) : (
+          <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {/* 툴바: 채우기 4방식(기업/지표/필터) */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "10px 14px",
-                  borderBottom: `1px solid ${colors.border}`,
+                  gap: 8,
+                  flexWrap: "wrap",
                   background: colors.bgSurface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  marginBottom: 12,
                 }}
               >
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: colors.textBase }}>
-                  <RobotOutlined style={{ color: colors.accent, marginRight: 6 }} />
-                  AI 데이터 분석
+                <Button icon={<PlusOutlined />} onClick={() => setPickerOpen(true)}>
+                  기업
+                </Button>
+                <Button icon={<FolderOpenOutlined />} onClick={() => setPfOpen(true)}>
+                  포트폴리오 불러오기
+                </Button>
+                <Button icon={<AppstoreOutlined />} onClick={() => openFilter("columns")}>
+                  지표
+                </Button>
+                <Button icon={<FilterOutlined />} onClick={() => openFilter("year")}>
+                  필터
+                </Button>
+                {rowFilter && (
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "#7A5B17",
+                      background: "#FFF8EC",
+                      border: "1px solid #F3E2BE",
+                      borderRadius: 12,
+                      padding: "3px 10px",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setRowFilter(null)}
+                  >
+                    AI 필터: {allCols.find((c) => c.id === rowFilter.colId)?.label} = 미도입 ✕
+                  </span>
+                )}
+                <span style={{ marginLeft: "auto", fontSize: 12, color: colors.textHint }}>
+                  채우기: 기업 선택 · 포트폴리오 · 조건 · AI 요청
                 </span>
-                <a
-                  onClick={() => setAiOpen(false)}
-                  style={{ fontSize: 12, color: colors.textHint, cursor: "pointer" }}
-                >
-                  접기 ▶
-                </a>
               </div>
-              <AiPanel
-                onApplyOp={applyOp}
-                onChartData={chartData}
-                companyCount={rows.length}
-                admin={admin}
-              />
+
+              {/* 통합 데이터 테이블 (공용 IndicatorGrid) */}
+              <div
+                style={{
+                  background: colors.bgSurface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                }}
+              >
+                {companyIds.length === 0 &&
+                sectors.length === 0 &&
+                cols.length === 0 &&
+                !showSanctions ? (
+                  <div style={{ padding: "56px 20px", textAlign: "center" }}>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: colors.textBase,
+                        marginBottom: 6,
+                      }}
+                    >
+                      빈 작업공간입니다
+                    </div>
+                    <div style={{ fontSize: 13, color: colors.textSub, marginBottom: 18 }}>
+                      기업·지표를 담거나 AI에게 요청해 표를 채워보세요.
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        justifyContent: "center",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => setPickerOpen(true)}
+                        style={{ background: colors.primary, borderColor: colors.primary }}
+                      >
+                        기업 선택
+                      </Button>
+                      <Button icon={<FolderOpenOutlined />} onClick={() => setPfOpen(true)}>
+                        포트폴리오 불러오기
+                      </Button>
+                      <Button icon={<AppstoreOutlined />} onClick={() => openFilter("columns")}>
+                        지표 추가
+                      </Button>
+                      <Button icon={<RobotOutlined />} onClick={() => setAiOpen(true)}>
+                        AI에게 요청
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <IndicatorGrid
+                    cols={cols}
+                    sortedYears={sortedYears}
+                    multiYear={years.length > 1}
+                    rows={sortedRows}
+                    expandedSubs={expandedSubs}
+                    onToggleSubs={toggleSubs}
+                    showSanctions={showSanctions}
+                    sanctionExpanded={sanctionExpanded}
+                    onToggleSanctionExpanded={() => setSanctionExpanded((v) => !v)}
+                    onRemoveSanctions={() => setShowSanctions(false)}
+                    sanctionCounts={sanctionCounts}
+                    sort={sort}
+                    onToggleSort={toggleSort}
+                    onSanctionSort={sanctionSort}
+                    onRemoveColumn={(id) => setIndicatorIds((prev) => prev.filter((x) => x !== id))}
+                    onCompanyOpen={(id) => navigate(`/company/${id}`)}
+                    onIndicatorOpen={(id, cat, code) =>
+                      navigate(`/company/${id}?cat=${cat}&ind=${code}`)
+                    }
+                    onSanctionOpen={(id) => navigate(`/company/${id}#sanctions`)}
+                    addColumnSlot={
+                      <AddIndicatorColumn
+                        count={indicatorIds.length}
+                        plan={plan}
+                        onOpen={() => openFilter("columns")}
+                        onUpgrade={requireUpgrade}
+                      />
+                    }
+                  />
+                )}
+              </div>
+              <div style={{ marginTop: 10, fontSize: 11.5, color: colors.textHint }}>
+                공시·수집된 원본 데이터입니다. 평가·등급·순위·점수가 아닙니다.
+              </div>
             </div>
-          ) : (
-            <button
-              onClick={() => setAiOpen(true)}
-              style={{
-                width: 36,
-                flexShrink: 0,
-                alignSelf: "flex-start",
-                position: "sticky",
-                top: 132,
-                height: 200,
-                border: `1px solid ${colors.border}`,
-                borderRadius: 10,
-                background: colors.bgSurface,
-                cursor: "pointer",
-                writingMode: "vertical-rl",
-                fontSize: 13,
-                fontWeight: 700,
-                color: colors.primary,
-              }}
-            >
-              ◀ AI
-            </button>
-          )}
-        </div>
+
+            {/* AI 패널 (접기/펴기) */}
+            {aiOpen ? (
+              <div
+                style={{
+                  width: 360,
+                  flexShrink: 0,
+                  alignSelf: "flex-start",
+                  position: "sticky",
+                  top: 132,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 14px",
+                    borderBottom: `1px solid ${colors.border}`,
+                    background: colors.bgSurface,
+                  }}
+                >
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: colors.textBase }}>
+                    <RobotOutlined style={{ color: colors.accent, marginRight: 6 }} />
+                    AI 데이터 분석
+                  </span>
+                  <a
+                    onClick={() => setAiOpen(false)}
+                    style={{ fontSize: 12, color: colors.textHint, cursor: "pointer" }}
+                  >
+                    접기 ▶
+                  </a>
+                </div>
+                <AiPanel
+                  onApplyOp={applyOp}
+                  onChartData={chartData}
+                  companyCount={rows.length}
+                  admin={admin}
+                  autoQuery={sp.get("ai") ?? undefined}
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => setAiOpen(true)}
+                style={{
+                  width: 36,
+                  flexShrink: 0,
+                  alignSelf: "flex-start",
+                  position: "sticky",
+                  top: 132,
+                  height: 200,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: 10,
+                  background: colors.bgSurface,
+                  cursor: "pointer",
+                  writingMode: "vertical-rl",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: colors.primary,
+                }}
+              >
+                ◀ AI
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 기업 선택 모달 */}

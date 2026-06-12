@@ -29,6 +29,27 @@ export const radius = {
   md: 12, // 검색바·드롭다운
 };
 
+// 업종(산업) 컬러칩 — 중립 카테고리색(우열 아님). 업종명을 해시해 안정적으로 매핑.
+const SECTOR_PALETTE: { bg: string; fg: string }[] = [
+  { bg: "#EEF3F8", fg: "#3F5E7A" }, // blue
+  { bg: "#E9F3EF", fg: "#3E6B5C" }, // green
+  { bg: "#F2EFF8", fg: "#5A4F86" }, // purple
+  { bg: "#F4F1EA", fg: "#6E5A36" }, // tan
+  { bg: "#FBEEEE", fg: "#9A4B4B" }, // red
+  { bg: "#EAF2F4", fg: "#3C6B73" }, // teal
+  { bg: "#F5EEF6", fg: "#7A4F73" }, // magenta
+  { bg: "#EFF1E9", fg: "#5E6B3A" }, // olive
+  { bg: "#FDF1E7", fg: "#9A5A2C" }, // orange
+  { bg: "#ECEEF5", fg: "#4A5478" }, // indigo
+  { bg: "#F0F0F2", fg: "#5A5A66" }, // gray
+  { bg: "#E8F1F0", fg: "#3E6663" }, // cyan
+];
+export function sectorTone(sector: string): { bg: string; fg: string } {
+  let h = 0;
+  for (let i = 0; i < sector.length; i++) h = (h * 31 + sector.charCodeAt(i)) >>> 0;
+  return SECTOR_PALETTE[h % SECTOR_PALETTE.length];
+}
+
 export const layout = {
   searchMaxWidth: 620, // 검색 영역 최대 폭 (명세 5.3)
   searchBarHeight: 46,
