@@ -30,3 +30,6 @@ yarn-error.log*
 .env
 .env.*
 !.env.example
+
+# docs (작업용 문서 — 추적 제외)
+docs/
