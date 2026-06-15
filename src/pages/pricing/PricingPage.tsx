@@ -131,7 +131,7 @@ export function PricingPage() {
                     ? { background: colors.accent, borderColor: colors.accent }
                     : undefined
                 }
-                onClick={() => navigate("/")}
+                onClick={() => navigate(t.price === "문의" ? "/contact?type=plan" : "/")}
               >
                 {t.price === "문의" ? "도입 문의" : "시작하기"}
               </Button>

@@ -51,7 +51,7 @@ export function AppHeader() {
     { key: "sub-search", label: "통합 검색", children: SEARCH_ITEMS },
     { key: "sub-ws", label: "워크스페이스", children: WORKSPACE_ITEMS },
     { key: "/pricing", label: "요금제" },
-    { key: "soon:contact", label: "문의/제보" },
+    { key: "/contact", label: "문의/제보" },
     { type: "divider" },
     { key: "login", label: "로그인" },
   ];
@@ -123,9 +123,9 @@ export function AppHeader() {
             />
             <NavLink
               label="문의/제보"
-              to=""
-              active={false}
-              onClick={() => handleKey("soon:contact")}
+              to="/contact"
+              active={pathname === "/contact"}
+              onClick={() => navigate("/contact")}
             />
           </nav>
 

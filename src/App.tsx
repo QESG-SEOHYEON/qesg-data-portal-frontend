@@ -10,6 +10,7 @@ import { ConditionSearchPage } from "@/pages/condition/ConditionSearchPage";
 import { WorkspacePage } from "@/pages/workspace/WorkspacePage";
 import { PortfolioPage } from "@/pages/workspace/PortfolioPage";
 import { PricingPage } from "@/pages/pricing/PricingPage";
+import { ContactPage } from "@/pages/contact/ContactPage";
 
 // 라우트(경로) 이동 시 상단에서 시작 — 해시(#sanctions 등) 진입은 해당 화면 핸들러가 처리
 function ScrollToTop() {
@@ -36,6 +37,7 @@ export default function App() {
               <Route path="/workspace" element={<WorkspacePage />} />
               <Route path="/portfolio" element={<PortfolioPage />} />
               <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/contact" element={<ContactPage />} />
             </Route>
           </Routes>
         </HashRouter>
