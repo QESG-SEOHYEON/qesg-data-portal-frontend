@@ -232,13 +232,12 @@ export function ConditionTable({
             style={{ width: 168 }}
             placeholder="내 포트폴리오"
             suffixIcon={<FolderOpenOutlined />}
-            value={null}
             notFoundContent="저장한 포트폴리오가 없어요"
             options={getPortfolios().map((p) => ({
               value: p.id,
               label: `${p.name} · ${p.companyIds.length}곳`,
             }))}
-            onChange={(id) => onSetCompanyIds(getPortfolio(id)?.companyIds)}
+            onChange={(id: string) => onSetCompanyIds(getPortfolio(id)?.companyIds)}
           />
           <Tooltip title={hasCompanies ? "" : "기업을 담은 뒤 포트폴리오로 저장할 수 있어요"}>
             <Button
