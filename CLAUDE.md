@@ -5,7 +5,7 @@
 
 ## 작업 규칙 (중요)
 
-- **커밋은 사용자가 명시적으로 요청할 때만.** auto-commit 스킬을 임의 호출하지 말 것.
+- **커밋·푸시는 사용자가 명시적으로 지시할 때만.** Claude가 먼저 commit/push 하지 말 것(auto-commit 스킬 임의 호출 금지). 코드 수정 후엔 `npm run build` 검증까지만. ※ 이 레포는 push가 곧 GitHub Pages 배포로 이어지므로 특히 주의.
 - **dev 서버를 죽이지 말 것.** 사용자가 직접 켜고 끈다. 검증은 `npm run build`(타입체크+번들)로 한다.
 - 의존성 설치는 `npm i`(이 레포는 `.npmrc`에 `legacy-peer-deps=true` — Glide v6 + React 19 충돌 회피).
 - 작업 브랜치: `mockup/search-page` (목업 전용). 원격 아직 없음.

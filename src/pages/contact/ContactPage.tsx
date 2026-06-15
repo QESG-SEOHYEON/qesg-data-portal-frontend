@@ -7,9 +7,9 @@ import { MailOutlined } from "@ant-design/icons";
 import { colors } from "@/theme/tokens";
 
 const TYPES = [
-  { value: "data", label: "데이터 요청 (미수집 지표·기업)" },
+  { value: "data", label: "데이터 요청" },
   { value: "plan", label: "도입 / 기업 플랜 문의" },
-  { value: "bug", label: "오류 · 데이터 제보" },
+  { value: "bug", label: "오류 제보" },
   { value: "etc", label: "기타 문의" },
 ];
 
@@ -34,7 +34,7 @@ export function ContactPage() {
       message.warning("이름·이메일·내용을 확인해주세요");
       return;
     }
-    message.success("문의가 접수되었습니다. 빠르게 회신드릴게요. (데모)");
+    message.success("문의가 접수되었습니다.");
     setName("");
     setCompany("");
     setEmail("");
@@ -45,9 +45,11 @@ export function ContactPage() {
     <main style={{ minHeight: "100vh", background: colors.bgPage }}>
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "56px 20px 80px" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: colors.textBase }}>문의하기</h1>
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: colors.textBase }}>
+            문의하기
+          </h1>
           <p style={{ margin: "12px 0 0", fontSize: 14.5, color: colors.textSub, lineHeight: 1.6 }}>
-            찾는 데이터가 없거나 도입을 검토 중이시라면 남겨주세요. 영업일 기준 빠르게 회신드립니다.
+            데이터 오류 제보, 혹은 서비스 도입을 검토 중이시라면 문의를 남겨주세요.
           </p>
         </div>
 
@@ -89,10 +91,20 @@ export function ContactPage() {
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Field label="이름" style={{ flex: 1, minWidth: 200 }}>
-              <Input size="large" value={name} onChange={(e) => setName(e.target.value)} placeholder="홍길동" />
+              <Input
+                size="large"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="홍길동"
+              />
             </Field>
             <Field label="회사 (선택)" style={{ flex: 1, minWidth: 200 }}>
-              <Input size="large" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="회사명" />
+              <Input
+                size="large"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder="회사명"
+              />
             </Field>
           </div>
 
@@ -111,7 +123,7 @@ export function ContactPage() {
               rows={5}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="필요한 데이터(지표·기업·연도)나 문의 내용을 적어주세요."
+              placeholder="문의 내용을 적어주세요."
             />
           </Field>
 
@@ -126,7 +138,7 @@ export function ContactPage() {
             문의 보내기
           </Button>
           <div style={{ fontSize: 12, color: colors.textHint, textAlign: "center" }}>
-            또는 <b>info@qesg.co.kr</b> 로 바로 메일 주셔도 됩니다. · 본 폼은 데모용입니다.
+            또는 <b>info@qesg.co.kr</b> 로 문의주시기 바랍니다.
           </div>
         </div>
       </div>
@@ -145,7 +157,9 @@ function Field({
 }) {
   return (
     <div style={style}>
-      <div style={{ fontSize: 12.5, fontWeight: 700, color: colors.textSub, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: colors.textSub, marginBottom: 6 }}>
+        {label}
+      </div>
       {children}
     </div>
   );
