@@ -5,11 +5,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useLocation, useSearchParams, useNavigate } from "react-router";
 import { Button, Empty } from "antd";
-import { HeartOutlined } from "@ant-design/icons";
+import { HeartOutlined, LockOutlined } from "@ant-design/icons";
 import type { Category } from "@/types";
 import { getCompanyDetail, getCompanyCardMeta } from "@/mock/companyDetail";
 import { pushRecentView } from "@/mock/recentViews";
 import { usePlan } from "@/mock/planContext";
+import { CAN, lockCta } from "@/mock/accessRules";
 import { colors, categoryColors, layout } from "@/theme/tokens";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { RightRail } from "@/components/RightRail";
@@ -41,6 +42,9 @@ export function CompanyDetailPage() {
 
   // 잠금 유도 — 비회원은 로그인, 그 외(개인X 등)는 플랜 안내
   const requireUpgrade = () => (plan === "guest" ? setLoginOpen(true) : setPlanOpen(true));
+  const canMeta = CAN(plan, "meta"); // 기업 정보(상장·규모·임직원 등) = 회원+
+  const canFinMeta = plan === "memberPlan" || plan === "enterprise" || plan === "admin"; // 재무(매출·시총·자산) = 개인 플랜+
+  const metaVisible = (level: "basic" | "financial") => (level === "financial" ? canFinMeta : canMeta);
 
   const detail = useMemo(() => getCompanyDetail(companyId, plan), [companyId, plan]);
 
@@ -129,6 +133,7 @@ export function CompanyDetailPage() {
               <MetaChip tone={META_TONES.sr}>FY{detail.baseYear} 지속가능경영보고서 공시</MetaChip>
             )}
           </div>
+
         </div>
         <Button
           icon={<HeartOutlined />}
@@ -137,6 +142,77 @@ export function CompanyDetailPage() {
           관심기업 저장
         </Button>
       </div>
+
+      {/* ── 기업 정보 (NICE 기반) — 키·값 카드, 재무는 플랜 잠금 ── */}
+      <section
+        style={{
+          background: colors.bgSurface,
+          border: `1px solid ${colors.border}`,
+          borderRadius: 12,
+          padding: "6px 18px 10px",
+          marginBottom: 20,
+        }}
+      >
+        <div style={{ fontSize: 13, fontWeight: 700, color: colors.textBase, padding: "12px 0 6px" }}>
+          기업 정보
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            columnGap: 28,
+          }}
+        >
+          {detail.businessMeta.map((m) => {
+            const vis = metaVisible(m.level);
+            const cta = m.level === "financial" && plan !== "guest" ? "플랜 필요" : lockCta(plan);
+            return (
+              <div
+                key={m.label}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  padding: "10px 0",
+                  borderBottom: `1px solid ${colors.border}`,
+                }}
+              >
+                <span style={{ fontSize: 12.5, color: colors.textHint }}>{m.label}</span>
+                {vis ? (
+                  <span
+                    style={{
+                      fontSize: 13.5,
+                      fontWeight: 700,
+                      color: colors.textBase,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {m.value}
+                  </span>
+                ) : (
+                  <button
+                    onClick={requireUpgrade}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      color: colors.primary,
+                    }}
+                  >
+                    <LockOutlined style={{ fontSize: 11 }} /> {cta}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* ── ESG 데이터 (다타입 테이블) ── */}
       <div

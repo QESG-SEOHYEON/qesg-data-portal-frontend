@@ -68,6 +68,9 @@ export interface CompanyDetail {
   trend: Record<string, TrendData>;
   disclosures: { title: string; meta: string; url: string }[];
   similar: { id: string; name: string }[];
+  // 기업 정보(NICE c_nice_company_info 기반) — 규모/재무 맥락.
+  // level: basic=회원 열람, financial=개인 플랜+ 열람(비회원은 전체 잠금). 급여 등 민감정보 제외.
+  businessMeta: { label: string; value: string; level: "basic" | "financial" }[];
 }
 
 // 다타입 지표 정의 — 그리드와 동일한 분류 코드 체계(GROUPED_INDICATORS 노출)에서 파생
@@ -230,6 +233,29 @@ export function getCompanyDetail(companyId: string, _plan: ViewerPlan = "member"
   const others = BULK_COMPANIES.filter((c) => c.id !== companyId && c.sector !== bulk.sector);
   const similar = [...sameSector, ...others].slice(0, 4).map((c) => ({ id: c.id, name: c.name }));
 
+  // 기업 정보 — c_nice_company_info 컬럼에 맞춰 결정적 생성(목업, 추후 NICE 연동).
+  // listed/company_size/founding_date/end_month/employee/revenue_consol/market_cap/total_assets_consol
+  const listed = h % 3 === 0 ? "코스닥" : "코스피";
+  const founded = 1960 + (h % 56); // 설립연도
+  const age = latestYear - founded; // 업력
+  const employees = 300 + (h % 19700);
+  const empDate = `${latestYear}.12`;
+  const revenueEok = 1000 + (h % 149000); // 매출액(연결, 억원)
+  const mcapEok = 800 + ((h * 7) % 220000); // 시가총액(억원)
+  const assetsEok = Math.round(revenueEok * (1 + (h % 25) / 10)); // 자산총계(연결, 억원)
+  const won = (eok: number) =>
+    eok >= 10000 ? `${(eok / 10000).toFixed(1)}조원` : `${eok.toLocaleString("ko-KR")}억원`;
+  const businessMeta: { label: string; value: string; level: "basic" | "financial" }[] = [
+    { label: "상장 여부", value: listed, level: "basic" },
+    { label: "기업규모", value: bulk.sector && h % 4 === 0 ? "중견기업" : "대기업", level: "basic" },
+    { label: "업력", value: `${age}년 (${founded} 설립)`, level: "basic" },
+    { label: "결산월", value: "12월", level: "basic" },
+    { label: "임직원 수", value: `${employees.toLocaleString("ko-KR")}명 (${empDate} 기준)`, level: "basic" },
+    { label: "매출액(연결)", value: won(revenueEok), level: "financial" },
+    { label: "시가총액", value: won(mcapEok), level: "financial" },
+    { label: "자산총계(연결)", value: won(assetsEok), level: "financial" },
+  ];
+
   return {
     id: companyId,
     name: bulk.name,
@@ -248,6 +274,7 @@ export function getCompanyDetail(companyId: string, _plan: ViewerPlan = "member"
       { title: "환경정보 공개", meta: "환경정보공개시스템", url: `https://example.com/env/${companyId}` },
     ],
     similar,
+    businessMeta,
   };
 }
 
