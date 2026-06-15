@@ -17,18 +17,18 @@ const TIERS: Tier[] = [
   {
     name: "비회원",
     price: "무료",
-    desc: "로그인 없이 맛보기",
+    desc: "비회원",
     features: ["카테고리당 상위 지표 미리보기", "기업 페이지 일부 열람"],
   },
   {
     name: "개인 회원",
-    price: "무료 가입",
-    desc: "가입하면 더 넓게",
-    features: ["전체 지표 값 열람", "기업 상세·제재 내역 전체", "AI 질의 하루 1회"],
+    price: "무료",
+    desc: "로그인 후 바로 이용",
+    features: ["전체 지표 값 열람", "기업 상세·제재 내역 전체", "AI 질의 1일 1회"],
   },
   {
     name: "개인 플랜",
-    price: "월 구독",
+    price: "월간/연간 구독",
     desc: "개인 분석가용",
     features: ["데이터 조회 무제한", "워크스페이스 + AI 분석 무제한", "저장 · Excel 다운로드"],
     highlight: true,
@@ -54,7 +54,7 @@ export function PricingPage() {
             서비스 소개
           </h1>
           <p style={{ margin: "12px 0 0", fontSize: 15, color: colors.textSub, lineHeight: 1.6 }}>
-            기업의 ESG 공시 데이터를 투명하게 — ESG 데이터를 필요한 만큼 이용하세요.
+            큐뎁 서비스 소개 및 플랜별 소개 페이지
             <br />
           </p>
         </div>
@@ -140,7 +140,7 @@ export function PricingPage() {
         </div>
 
         <div style={{ textAlign: "center", marginTop: 36, fontSize: 12.5, color: colors.textHint }}>
-          ※ 본 페이지는 데모용 안내입니다. 실제 요금·결제는 추후 연동됩니다.
+          ※ 본 페이지는 데모용 안내입니다.
         </div>
       </div>
     </main>
