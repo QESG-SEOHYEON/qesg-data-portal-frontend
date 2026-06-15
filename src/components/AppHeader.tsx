@@ -8,6 +8,7 @@ import { Button, Dropdown, App } from "antd";
 import { MenuOutlined, DownOutlined } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { colors } from "@/theme/tokens";
+import { asset } from "@/lib/asset";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { LoginModal } from "@/pages/landing/components/LoginModal";
 
@@ -73,7 +74,7 @@ export function AppHeader() {
       {/* 로고 */}
       <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
         <img
-          src="/logos/qesg.svg"
+          src={asset("/logos/qesg.svg")}
           alt="QESG"
           style={{ height: 32, width: "auto", display: "block" }}
         />

@@ -1,5 +1,6 @@
 // 사이트 하단 푸터 (목업) — 인증·파트너십 + 회사 정보 + 정책 링크
 import { colors, layout } from "@/theme/tokens";
+import { asset } from "@/lib/asset";
 
 const CERTS: { title: string; sub: string; logos: string[] }[] = [
   { title: "ISO/IEC 27001 인증", sub: "정보보안경영시스템", logos: ["/logos/iso27001.png"] },
@@ -26,7 +27,7 @@ export function Footer() {
                   c.logos.map((src) => (
                     <img
                       key={src}
-                      src={src}
+                      src={asset(src)}
                       alt=""
                       style={{ height: 28, width: "auto", maxWidth: 130, objectFit: "contain" }}
                     />
@@ -65,7 +66,7 @@ export function Footer() {
         <div style={{ display: "flex", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <img src="/logos/qesg.svg" alt="QuantifiedESG" style={{ height: 24, width: "auto", display: "block" }} />
+              <img src={asset("/logos/qesg.svg")} alt="QuantifiedESG" style={{ height: 24, width: "auto", display: "block" }} />
             </div>
             <div style={{ fontSize: 13, fontWeight: 700, color: colors.textBase, marginBottom: 6 }}>
               (주)퀀티파이드이에스지
