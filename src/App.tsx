@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router";
+import { HashRouter, Routes, Route, useLocation } from "react-router";
 import { ConfigProvider, App as AntdApp } from "antd";
 import { qesgTheme } from "@/theme/tokens";
 import { PlanProvider } from "@/mock/planContext";
@@ -26,7 +26,7 @@ export default function App() {
     <ConfigProvider theme={qesgTheme}>
       <AntdApp>
         <PlanProvider>
-        <BrowserRouter>
+        <HashRouter>
           <ScrollToTop />
           <Routes>
             <Route element={<Layout />}>
@@ -38,7 +38,7 @@ export default function App() {
               <Route path="/pricing" element={<PricingPage />} />
             </Route>
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
         </PlanProvider>
       </AntdApp>
     </ConfigProvider>

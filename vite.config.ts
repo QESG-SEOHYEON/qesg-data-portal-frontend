@@ -4,6 +4,8 @@ import { fileURLToPath, URL } from "node:url";
 
 // https://vite.dev/config/
 export default defineConfig({
+  // GitHub Pages 프로젝트 사이트 경로(레포명) — 자산이 /qesg-data-portal-frontend/ 하위에서 로드됨
+  base: "/qesg-data-portal-frontend/",
   plugins: [react()],
   resolve: {
     alias: {
