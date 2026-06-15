@@ -137,7 +137,7 @@ export function IndicatorGrid({
                 colSpan={span}
                 style={{
                   height: H1,
-                  textAlign: "center",
+                  textAlign: "left",
                   padding: "0 12px",
                   fontSize: 11.5,
                   fontWeight: 700,
@@ -149,7 +149,7 @@ export function IndicatorGrid({
                   verticalAlign: "middle",
                 }}
               >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, justifyContent: "center" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, justifyContent: "flex-start" }}>
                   <span
                     style={{
                       width: 6,
@@ -214,7 +214,7 @@ export function IndicatorGrid({
                     rowSpan={noSubSingle ? 2 : 1}
                     style={{
                       height: H2,
-                      textAlign: "center",
+                      textAlign: "left",
                       padding: "4px 8px",
                       fontSize: 12,
                       fontWeight: 700,
@@ -226,7 +226,7 @@ export function IndicatorGrid({
                       ...(noSubSingle ? { width: colW(col.type), maxWidth: colW(col.type) } : {}),
                     }}
                   >
-                    <span style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "center", maxWidth: "100%" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-start", maxWidth: "100%" }}>
                       {hasTotal(col) && (
                         <button
                           onClick={() => onToggleSubs(col.id)}
