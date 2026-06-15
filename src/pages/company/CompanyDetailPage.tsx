@@ -22,6 +22,7 @@ import { SanctionSection } from "./components/SanctionSection";
 import { AskAboutCompany } from "./components/AskAboutCompany";
 import { DisclosureSources } from "./components/DisclosureSources";
 import { SimilarCompanies } from "./components/SimilarCompanies";
+import { CompanyNews } from "./components/CompanyNews";
 
 const CATEGORIES: Category[] = ["E", "S", "G"];
 
@@ -302,6 +303,9 @@ export function CompanyDetailPage() {
         onLogin={() => setLoginOpen(true)}
         onUpgrade={() => setPlanOpen(true)}
       />
+
+      {/* ── 기업 관련 뉴스 (공시 정보 위) ── */}
+      <CompanyNews name={detail.name} />
 
       {/* ── 공시 원문 ── */}
       <DisclosureSources detail={detail} />
